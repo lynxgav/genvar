@@ -5,6 +5,7 @@
 #include"exception.h"
 #include<iostream>
 #include<fstream>
+#include<map>
 using namespace std;
 class CStrain;
 class CNode
@@ -14,7 +15,7 @@ class CNode
 	~CNode();
 	list<CNode*> neighbours;
 	vector<CStrain*> pathogens;
-	vector<CStrain*> migrants;
+	map<int,CStrain*> migrants;
 	bool add_neighbour(CNode*, bool trial=false);
 	bool remove_neighbour(CNode*, bool trial=false);
 	void print_neighbours(ostream &out);
@@ -25,6 +26,7 @@ class CNode
 	int index;
 	int state;
 	double prob;
+	
  	private:
 	};
 

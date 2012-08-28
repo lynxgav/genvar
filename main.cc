@@ -15,13 +15,14 @@ int stotal;
 vector<CStrain*> allstrains;
 vector<CStrain*> strains;
 CStrain *top=NULL;
-int Nd = 5;
+int Nd = 10;
 double rec_rate = 0.02;
 double r0 = 2.;
 double avconnect=4.;
 double mig_rate = r0*rec_rate/(double)(Nd*avconnect);
 double mutat_rate = 0.0001;
 int nt=100;
+int nd=5;
 int t=1, tmax=1000000, tstep=1;
 //time
 
@@ -31,13 +32,46 @@ CModel model(contacts);
 
 int distance(CStrain *s1, CStrain *s2){
 
-	if (s1==s2) return 0;
-	if(s1->gen > s2->gen) return 1+distance(s1->father(), s2);
+	if(s1==s2) {return 0;}
+	if(s1->gen > s2->gen) swap(s1,s2);
 	if(s2->gen > s1->gen) return 1+distance(s1, s2->father());
 	if(s2->gen == s1->gen) return 2+distance(s1->father(), s2->father());
 
+	
 	return -1;
 
+}
+
+
+unsigned int visited=0;
+int seg_distance(CStrain *s1, CStrain *s2, CStrain *&f){
+	s1->visited=s2->visited=visited;
+	if(s1==s2) {f=s1; return 0;}
+	if(s1->gen > s2->gen)swap(s1,s2);
+
+	if(s2->gen > s1->gen){
+		if(s2->father()->visited==visited) return 1;
+		return 1+seg_distance(s1, s2->father(),f);
+		}
+	if(s2->gen == s1->gen) return 2+seg_distance(s1->father(), s2->father(),f);
+
+	f=NULL; 
+	return -1;
+
+}
+
+double NSegSites(vector<CStrain*> &sample){
+	visited++;
+	if(sample.size()==0)return 0;
+	CStrain *common_father=sample.at(0);
+	double d=0;
+	for(unsigned int i=1;i<sample.size();i++){
+		
+		d+=seg_distance(common_father, sample.at(i), common_father);	
+		assert(common_father!=NULL);
+	}
+	
+	return d;
 }
 
 double GeneticDiversityGlobal(){
@@ -54,6 +88,8 @@ double GeneticDiversityGlobal(){
 		sample.push_back(p_node->pathogens.at(chosen));
 	}
 
+	cerr<<"n seg sites= "<<NSegSites(sample)<<"  n strains= "<<sample.size()<<endl;
+
 	double dist=0.;
 	int k=0;
 
@@ -65,7 +101,51 @@ double GeneticDiversityGlobal(){
 		}
 	}
 
-	dist=dist/(nt*(nt-1)/2.);
+	dist=dist/(nt*(nt-1.)/2.);
+
+	return dist;
+}
+
+double GeneticDiversityLocal(CNode* p_node){
+
+	map<int,CStrain*> sample;
+
+	std::tr1::uniform_int<int> unif6(0,Nd-1);
+
+	assert(nd<=Nd);
+
+	while (sample.size()<(unsigned int) nd){
+		int chosen=unif6(eng);
+		sample[chosen]=p_node->pathogens.at(chosen);
+	}
+	
+	double dist=0.;
+	int k=0;
+
+	map<int,CStrain*>::iterator it1, it2;
+
+	for(it1=sample.begin(); it1!=sample.end(); it1++){
+		for(it2=it1,it2++; it2!=sample.end(); it2++){
+			k=distance( it1->second, it2->second );
+			assert(k!=-1);
+			dist+=k;
+		}
+	}
+
+	dist=dist/(nd*(nd-1.)/2.);
+
+	return dist;
+}
+
+double GeneticDiversityLocalAverage(){
+
+	double dist=0.;
+
+	for (unsigned int i=0; i < model.system_state.at(INF).size(); i++){
+		dist+=GeneticDiversityLocal( model.system_state.at(INF).at(i) );
+	}
+
+	dist=dist/(double)model.system_state.at(INF).size();
 
 	return dist;
 }
@@ -113,14 +193,16 @@ void Migration(){
 		CNode* p_node=model.system_state.at(INF).at(i);
 		std::tr1::poisson_distribution<double> poisson( Nd*mig_rate*p_node->degree );
 		unsigned int nmigrants = (unsigned int)poisson(eng);
-		assert( nmigrants <= (unsigned int) Nd);//{
+		assert( nmigrants <= (unsigned int) Nd);
+		assert( p_node->pathogens.size()==(unsigned int) Nd);
+		//{
 			//cerr<<"Number of migrants <= Nd"<<endl;
 		//};
 		unsigned int np=p_node->pathogens.size();
 		std::tr1::uniform_int<int> unif1(0,np-1);
 		while(p_node->migrants.size()<nmigrants){
 			int chosen=unif1(eng);
-			p_node->migrants.push_back(p_node->pathogens.at(chosen));
+			p_node->migrants[chosen]=p_node->pathogens.at(chosen);
 		}
 	}
 
@@ -136,7 +218,9 @@ void Migration(){
 
 		std::tr1::uniform_int<int> unif2(1,nrecipients);
 
-		for(unsigned int j=0; j < p_node->migrants.size(); j++){
+		map<int,CStrain*>::iterator itt;
+
+		for(itt=p_node->migrants.begin(); itt != p_node->migrants.end(); itt++){
 			list<CNode*>::iterator it; int count=0;
 			int chosen=unif2(eng);
 			for(it=p_node->neighbours.begin(); count!=chosen; it++) {
@@ -147,27 +231,45 @@ void Migration(){
 					}
 				}
 			}
-			(*it)->pathogens.push_back(p_node->migrants.at(j));
+			(*it)->pathogens.push_back(itt->second);
 		}
 		p_node->migrants.clear();
 
 	}
-
+	/*
 	int j=0;
 
 	vector<CNode *>::iterator it;
 	for (it=model.network->nodes.begin(); it!=model.network->nodes.end(); it++) {
 		if( (*it)->pathogens.size()>0 && (*it)->state==SUS ) {
 			sus--; inf++;
-			model.UpdateSystemState( (*it) , SUS, INF);
+			model.UpdateSystemState( (*it), SUS, INF);
 			j++;
 			
 		}
 		assert( (*it)->migrants.size()==0 );
 		if ( (*it)->pathogens.size()>0) { assert ( (*it)->state==INF ); }
 	}
+	*/
 
+	int j=0;
+	vector<CNode*> susceptibles;
+	susceptibles=model.system_state.at(SUS);
+	for (unsigned int i=0; i < susceptibles.size(); i++){
+		CNode* p_node=susceptibles.at(i);
+		if( p_node->pathogens.size()>0 ){
+			sus--; inf++;
+			model.UpdateSystemState( p_node, SUS, INF);
+			j++;
+		}
+	}
 	//cerr << "number of migrations  " << j << endl;
+
+	vector<CNode *>::iterator it;
+	for (it=model.network->nodes.begin(); it!=model.network->nodes.end(); it++) {
+		assert( (*it)->migrants.size()==0 );
+		if ( (*it)->pathogens.size()>0) { assert ( (*it)->state==INF ); }
+	}
 
 }
 
@@ -211,7 +313,8 @@ void Update(){
 void Iterate(){
 	while(t<=tmax and inf>0 and sus>=0 and rec>=0){
 		if(t%100==0){
-			cout<< t <<"\t"<< sus/(double)model.network->get_N() <<"\t"<< inf/(double)model.network->get_N() <<"\t"<< rec/(double)model.network->get_N() <<"\t"<< GeneticDiversityGlobal()<<endl;
+			//cerr<<"n seg sites= "<<NSegSites(allstrains)<<"  n strains= "<<allstrains.size()<<endl;
+			cout<< t <<"\t"<< sus/(double)model.network->get_N() <<"\t"<< inf/(double)model.network->get_N() <<"\t"<< rec/(double)model.network->get_N() <<"\t"<< GeneticDiversityGlobal() <<"\t"<< GeneticDiversityLocalAverage() << endl;
 		}
 	
 		Update();
@@ -232,6 +335,7 @@ int main(int argc, char **argv){
 
 	model.Initial_Conditions();
 	InitialConditions();
+
 	Iterate();
 
 return 0;

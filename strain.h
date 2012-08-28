@@ -44,6 +44,7 @@ class CStrain{
 	double print_width;
 	bool is_leaf, dead;
 	int ID;
+	unsigned int visited;
 	double x,y;
 	double color;
 	double I, dI,dII, dSS, S, dS;
@@ -67,6 +68,7 @@ unsigned int CStrain::NNeigh(){
 //father node
 CStrain::CStrain(int i, CStrain *f, double im_d){
 	gen=0;
+	visited=-1;
 	print_width = base_print_width;
 	ID=i;
 	dI=dII=dS=dSS=I=S=0;
