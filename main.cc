@@ -46,14 +46,22 @@ int distance(CStrain *s1, CStrain *s2){
 
 
 int seg_distance(CStrain *s1, CStrain *s2, CStrain *&f){
-	s1->visited=s2->visited=visited;
-	if(s1==s2) {f=s1; return 0;}
+	if(s1->visited==visited and s2->visited==visited) return 0;
+	if(s1==s2) {f=s1; 
+		s1->visited=s2->visited=visited;
+		return 0;
+		}
 	if(s1->gen > s2->gen)swap(s1,s2);
 
 	if(s2->gen > s1->gen){
-		if(s2->father()->visited==visited) return 1;
-		return 1+seg_distance(s1, s2->father(),f);
+		if(s2->father()->visited==visited){
+			s1->visited=s2->visited=visited; 
+			return 1;
 		}
+		s1->visited=s2->visited=visited; 
+		return 1+seg_distance(s1, s2->father(),f);
+	}
+	s1->visited=s2->visited=visited; 
 	if(s2->gen == s1->gen) return 2+seg_distance(s1->father(), s2->father(),f);
 
 	f=NULL; 
@@ -94,7 +102,7 @@ double GeneticDiversityGlobal(){
 		sample.push_back(p_node->pathogens.at(chosen));
 	}
 	cerr<< t << "  visited before function executed " << visited << endl;
-	cerr<< t <<"   n seg sites= "<<NSegSites(sample)<<"  n strains= "<<sample.size()<< "  allstrains  " << allstrains.size() << " visited after function executed " << visited <<endl<<endl;
+	cerr<< t <<"   n seg sites= "<<NSegSites(sample)<<"  n strains= "<<sample.size();cerr<< "  allstrains  " << allstrains.size() << " visited after function executed " << visited <<endl<<endl;
 
 	if(t==7){//t==2915 || t==2467)
 		for (int i=0; i<nt; i++){	
