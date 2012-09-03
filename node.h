@@ -26,7 +26,6 @@ class CNode
 	int index;
 	int state;
 	double prob;
-	
  	private:
 	};
 

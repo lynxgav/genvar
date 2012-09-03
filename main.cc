@@ -16,12 +16,12 @@ vector<CStrain*> allstrains;
 vector<CStrain*> strains;
 CStrain *top=NULL;
 int Nd = 10;
-double rec_rate = 0.02;
+double rec_rate = 0.3;
 double r0 = 2.;
 double avconnect=4.;
 double mig_rate = r0*rec_rate/(double)(Nd*avconnect);
 double mutat_rate = 0.0001;
-int nt=100;
+int nt=900;
 int nd=5;
 int t=1, tmax=1000000, tstep=1;
 //time
@@ -29,6 +29,8 @@ int t=1, tmax=1000000, tstep=1;
 //CNetwork *contacts=new CRRGraph(5000, 4);
 CNetwork *contacts=new CLattice(30, 30);
 CModel model(contacts);
+
+unsigned int visited=0;
 
 int distance(CStrain *s1, CStrain *s2){
 
@@ -43,7 +45,6 @@ int distance(CStrain *s1, CStrain *s2){
 }
 
 
-unsigned int visited=0;
 int seg_distance(CStrain *s1, CStrain *s2, CStrain *&f){
 	s1->visited=s2->visited=visited;
 	if(s1==s2) {f=s1; return 0;}
@@ -61,7 +62,9 @@ int seg_distance(CStrain *s1, CStrain *s2, CStrain *&f){
 }
 
 double NSegSites(vector<CStrain*> &sample){
+	cerr<< t << "  visited before increment in function " << visited << endl; 
 	visited++;
+	cerr<< t << "  visited after increment in function " << visited << endl;
 	if(sample.size()==0)return 0;
 	CStrain *common_father=sample.at(0);
 	double d=0;
@@ -84,11 +87,20 @@ double GeneticDiversityGlobal(){
 	for (int i=0; i<nt; i++){
 		int chosen=unif4(eng);
 		CNode* p_node=model.system_state.at(INF).at(chosen);
+		/*if(t==1458)//t==2915 || t==2467){
+			cerr << p_node->ID << "  ";
+		}*/
 		chosen=unif5(eng);
 		sample.push_back(p_node->pathogens.at(chosen));
 	}
+	cerr<< t << "  visited before function executed " << visited << endl;
+	cerr<< t <<"   n seg sites= "<<NSegSites(sample)<<"  n strains= "<<sample.size()<< "  allstrains  " << allstrains.size() << " visited after function executed " << visited <<endl<<endl;
 
-	cerr<<"n seg sites= "<<NSegSites(sample)<<"  n strains= "<<sample.size()<<endl;
+	if(t==7){//t==2915 || t==2467)
+		for (int i=0; i<nt; i++){	
+			cerr << sample.at(i)->visited << "  ";
+		}
+	}	
 
 	double dist=0.;
 	int k=0;
@@ -312,7 +324,7 @@ void Update(){
 
 void Iterate(){
 	while(t<=tmax and inf>0 and sus>=0 and rec>=0){
-		if(t%100==0){
+		if(t%7==0){
 			//cerr<<"n seg sites= "<<NSegSites(allstrains)<<"  n strains= "<<allstrains.size()<<endl;
 			cout<< t <<"\t"<< sus/(double)model.network->get_N() <<"\t"<< inf/(double)model.network->get_N() <<"\t"<< rec/(double)model.network->get_N() <<"\t"<< GeneticDiversityGlobal() <<"\t"<< GeneticDiversityLocalAverage() << endl;
 		}
