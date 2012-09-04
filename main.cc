@@ -16,12 +16,12 @@ vector<CStrain*> allstrains;
 vector<CStrain*> strains;
 CStrain *top=NULL;
 int Nd = 10;
-double rec_rate = 0.3;
+double rec_rate = 0.01;
 double r0 = 2.;
 double avconnect=4.;
 double mig_rate = r0*rec_rate/(double)(Nd*avconnect);
 double mutat_rate = 0.0001;
-int nt=900;
+int nt=100;
 int nd=5;
 int t=1, tmax=1000000, tstep=1;
 //time
@@ -41,7 +41,31 @@ int distance(CStrain *s1, CStrain *s2){
 
 	
 	return -1;
+}
 
+CStrain* CommonFatherForTwoNodes(CStrain *s1, CStrain *s2){
+
+	if(s1==s2) {return s1;}
+	if(s1->gen > s2->gen) {swap(s1,s2);}
+	if(s2->gen > s1->gen) return CommonFatherForTwoNodes(s1, s2->father());
+	if(s2->gen == s1->gen) return CommonFatherForTwoNodes(s1->father(), s2->father());
+
+	return NULL;
+}
+
+CStrain* CommonFatherForSample(vector<CStrain*> &sample){
+	//visited++;
+	if(sample.size()==0) {return NULL;}
+	CStrain *commonfather=sample.at(0);
+
+	for(unsigned int i=1;i<sample.size();i++){
+		commonfather=CommonFatherForTwoNodes(commonfather, sample.at(i));
+		assert(commonfather!=NULL);
+	}
+
+	assert(commonfather!=NULL);
+	
+	return commonfather;
 }
 
 
@@ -69,10 +93,12 @@ int seg_distance(CStrain *s1, CStrain *s2, CStrain *&f){
 
 }
 
+CStrain* cf=NULL;
+
 double NSegSites(vector<CStrain*> &sample){
-	cerr<< t << "  visited before increment in function " << visited << endl; 
+	//cerr<< t << "  visited before increment in function " << visited << endl; 
 	visited++;
-	cerr<< t << "  visited after increment in function " << visited << endl;
+	//cerr<< t << "  visited after increment in function " << visited << endl;
 	if(sample.size()==0)return 0;
 	CStrain *common_father=sample.at(0);
 	double d=0;
@@ -81,6 +107,8 @@ double NSegSites(vector<CStrain*> &sample){
 		d+=seg_distance(common_father, sample.at(i), common_father);	
 		assert(common_father!=NULL);
 	}
+
+	cf=common_father;
 	
 	return d;
 }
@@ -101,14 +129,18 @@ double GeneticDiversityGlobal(){
 		chosen=unif5(eng);
 		sample.push_back(p_node->pathogens.at(chosen));
 	}
-	cerr<< t << "  visited before function executed " << visited << endl;
-	cerr<< t <<"   n seg sites= "<<NSegSites(sample)<<"  n strains= "<<sample.size();cerr<< "  allstrains  " << allstrains.size() << " visited after function executed " << visited <<endl<<endl;
+	//cerr<< t << "  visited before function executed " << visited << endl;
+	cerr<< t <<"   n seg sites= "<<NSegSites(sample)<<"  n strains= "<<sample.size()<< "  allstrains  " << allstrains.size() << " visited " << visited <<endl<<endl;
 
+	assert(cf==CommonFatherForSample(sample));
+
+	/*
 	if(t==7){//t==2915 || t==2467)
 		for (int i=0; i<nt; i++){	
 			cerr << sample.at(i)->visited << "  ";
 		}
-	}	
+	}
+	*/	
 
 	double dist=0.;
 	int k=0;
@@ -332,7 +364,7 @@ void Update(){
 
 void Iterate(){
 	while(t<=tmax and inf>0 and sus>=0 and rec>=0){
-		if(t%7==0){
+		if(t%10==0){
 			//cerr<<"n seg sites= "<<NSegSites(allstrains)<<"  n strains= "<<allstrains.size()<<endl;
 			cout<< t <<"\t"<< sus/(double)model.network->get_N() <<"\t"<< inf/(double)model.network->get_N() <<"\t"<< rec/(double)model.network->get_N() <<"\t"<< GeneticDiversityGlobal() <<"\t"<< GeneticDiversityLocalAverage() << endl;
 		}
