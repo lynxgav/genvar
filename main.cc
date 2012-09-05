@@ -70,7 +70,7 @@ CStrain* CommonFatherForSample(vector<CStrain*> &sample){
 
 
 int seg_distance(CStrain *s1, CStrain *s2, CStrain *&f){
-	if(s1->visited==visited and s2->visited==visited) return 0;
+	if(s1->visited==visited and s2->visited==visited) {f=CommonFatherForTwoNodes(s1,s2);return 0;}
 	if(s1==s2) {f=s1; 
 		s1->visited=s2->visited=visited;
 		return 0;
@@ -132,7 +132,10 @@ double GeneticDiversityGlobal(){
 	//cerr<< t << "  visited before function executed " << visited << endl;
 	cerr<< t <<"   n seg sites= "<<NSegSites(sample)<<"  n strains= "<<sample.size()<< "  allstrains  " << allstrains.size() << " visited " << visited <<endl<<endl;
 
-	assert(cf==CommonFatherForSample(sample));
+	CStrain *f2=CommonFatherForSample(sample);
+	cerr<< cf->gen <<"\t"<< f2->gen <<endl;
+	
+	assert(cf==f2);
 
 	/*
 	if(t==7){//t==2915 || t==2467)
