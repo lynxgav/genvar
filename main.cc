@@ -31,6 +31,7 @@ CNetwork *contacts=new CLattice(30, 30);
 CModel model(contacts);
 
 unsigned int visited=0;
+unsigned int iteration=0;
 
 int distance(CStrain *s1, CStrain *s2){
 
@@ -54,7 +55,6 @@ CStrain* CommonFatherForTwoNodes(CStrain *s1, CStrain *s2){
 }
 
 CStrain* CommonFatherForSample(vector<CStrain*> &sample){
-	//visited++;
 	if(sample.size()==0) {return NULL;}
 	CStrain *commonfather=sample.at(0);
 
@@ -67,7 +67,6 @@ CStrain* CommonFatherForSample(vector<CStrain*> &sample){
 	
 	return commonfather;
 }
-
 
 int seg_distance(CStrain *s1, CStrain *s2, CStrain *&f){
 	if(s1->visited==visited and s2->visited==visited) {f=CommonFatherForTwoNodes(s1,s2);return 0;}
@@ -93,15 +92,37 @@ int seg_distance(CStrain *s1, CStrain *s2, CStrain *&f){
 
 }
 
+int seg_distanceShahbanu(CStrain  *s, CStrain *gfather){
+
+	if(s->visitedShahbanu==iteration or s==gfather) return 0;
+
+	s->visitedShahbanu=iteration;
+	return 1+seg_distanceShahbanu(s->father(),gfather);
+}
+
+int NSegSitesShahbanu(vector<CStrain*> &sample){
+	iteration++;
+
+	if(sample.size()==0)return 0;
+	CStrain *cfather=CommonFatherForSample(sample);
+	assert(cfather!=NULL);
+	int d=0;
+	for(unsigned int i=0;i<sample.size();i++){
+		d+=seg_distanceShahbanu(sample.at(i), cfather);	
+	}
+
+	return d;
+}
+
 CStrain* cf=NULL;
 
-double NSegSites(vector<CStrain*> &sample){
+int NSegSites(vector<CStrain*> &sample){
 	//cerr<< t << "  visited before increment in function " << visited << endl; 
 	visited++;
 	//cerr<< t << "  visited after increment in function " << visited << endl;
 	if(sample.size()==0)return 0;
 	CStrain *common_father=sample.at(0);
-	double d=0;
+	int d=0;
 	for(unsigned int i=1;i<sample.size();i++){
 		
 		d+=seg_distance(common_father, sample.at(i), common_father);	
@@ -130,7 +151,7 @@ double GeneticDiversityGlobal(){
 		sample.push_back(p_node->pathogens.at(chosen));
 	}
 	//cerr<< t << "  visited before function executed " << visited << endl;
-	cerr<< t <<"   n seg sites= "<<NSegSites(sample)<<"  n strains= "<<sample.size()<< "  allstrains  " << allstrains.size() << " visited " << visited <<endl<<endl;
+	cerr<< t <<"   n seg sites= "<<NSegSites(sample)<<"   "<<NSegSitesShahbanu(sample) <<"  n strains= "<<sample.size()<< "  allstrains  " << allstrains.size() << " visited " << visited <<endl<<endl;
 
 	CStrain *f2=CommonFatherForSample(sample);
 	cerr<< cf->gen <<"\t"<< f2->gen <<endl;
@@ -367,7 +388,7 @@ void Update(){
 
 void Iterate(){
 	while(t<=tmax and inf>0 and sus>=0 and rec>=0){
-		if(t%10==0){
+		if(t%1000==0){
 			//cerr<<"n seg sites= "<<NSegSites(allstrains)<<"  n strains= "<<allstrains.size()<<endl;
 			cout<< t <<"\t"<< sus/(double)model.network->get_N() <<"\t"<< inf/(double)model.network->get_N() <<"\t"<< rec/(double)model.network->get_N() <<"\t"<< GeneticDiversityGlobal() <<"\t"<< GeneticDiversityLocalAverage() << endl;
 		}
