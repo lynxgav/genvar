@@ -46,8 +46,8 @@ int distance(CStrain *s1, CStrain *s2){
 
 CStrain* CommonFatherForTwoNodes(CStrain *s1, CStrain *s2){
 
-	if(s1==s2) {return s1;}
-	if(s1->gen > s2->gen) {swap(s1,s2);}
+	if(s1==s2) return s1;
+	if(s1->gen > s2->gen) return CommonFatherForTwoNodes(s1->father(), s2);
 	if(s2->gen > s1->gen) return CommonFatherForTwoNodes(s1, s2->father());
 	if(s2->gen == s1->gen) return CommonFatherForTwoNodes(s1->father(), s2->father());
 
@@ -59,7 +59,7 @@ CStrain* CommonFatherForSample(vector<CStrain*> &sample){
 	CStrain *commonfather=sample.at(0);
 
 	for(unsigned int i=1;i<sample.size();i++){
-		commonfather=CommonFatherForTwoNodes(commonfather, sample.at(i));
+		commonfather=CommonFatherForTwoNodes(sample.at(i),commonfather);
 		assert(commonfather!=NULL);
 	}
 
@@ -151,13 +151,19 @@ double GeneticDiversityGlobal(){
 		sample.push_back(p_node->pathogens.at(chosen));
 	}
 	//cerr<< t << "  visited before function executed " << visited << endl;
-	cerr<< t <<"   n seg sites= "<<NSegSites(sample)<<"   "<<NSegSitesShahbanu(sample) <<"  n strains= "<<sample.size()<< "  allstrains  " << allstrains.size() << " visited " << visited <<endl<<endl;
+
+	int n1=NSegSites(sample);
+	int n2=NSegSitesShahbanu(sample);
+
+	if(n1!=n2){
+		cerr<< t <<"   n seg sites= "<< n1-n2 <<"  n strains= "<<sample.size()<< "  allstrains  " << allstrains.size() << " visited " << visited << "   f->gen" << cf->gen <<endl;
+	}
 
 	CStrain *f2=CommonFatherForSample(sample);
-	cerr<< cf->gen <<"\t"<< f2->gen <<endl;
+	//cerr<< cf->gen <<"\t"<< f2->gen <<endl;
 	
 	assert(cf==f2);
-
+	
 	/*
 	if(t==7){//t==2915 || t==2467)
 		for (int i=0; i<nt; i++){	
@@ -407,6 +413,7 @@ void Iterate(){
 int main(int argc, char **argv){
 
 	if(argc>1)seed=atoi(argv[1]);
+	if(argc>2)r0=atof(argv[2]);
 	eng.seed(seed);
 
 	model.Initial_Conditions();
