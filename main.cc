@@ -15,19 +15,22 @@ int stotal;
 vector<CStrain*> allstrains;
 vector<CStrain*> strains;
 CStrain *top=NULL;
-int Nd = 10;
-double rec_rate = 0.01;
-double r0 = 2.;
+int Nd = 5;
+double rec_rate = 0.05;
+double r0;// = 2.;
 double avconnect=4.;
-double mig_rate = r0*rec_rate/(double)(Nd*avconnect);
-double mutat_rate = 0.0001;
-int nt=100;
+double mig_rate;// = r0*rec_rate/(double)(Nd*avconnect);
+double mutat_rate = 0.0004;
+int nt=50;
 int nd=5;
-int t=1, tmax=1000000, tstep=1;
+int t=1;
+int tmax=1000000;
+int tstep=1;
+int tprint=1000;
 //time
 
 //CNetwork *contacts=new CRRGraph(5000, 4);
-CNetwork *contacts=new CLattice(30, 30);
+CNetwork *contacts=new CLattice(32, 32);
 CModel model(contacts);
 
 unsigned int visited=0;
@@ -68,6 +71,7 @@ CStrain* CommonFatherForSample(vector<CStrain*> &sample){
 	return commonfather;
 }
 
+/*
 int seg_distance(CStrain *s1, CStrain *s2, CStrain *&f){
 	if(s1->visited==visited and s2->visited==visited) {f=CommonFatherForTwoNodes(s1,s2);return 0;}
 	if(s1==s2) {f=s1; 
@@ -89,8 +93,8 @@ int seg_distance(CStrain *s1, CStrain *s2, CStrain *&f){
 
 	f=NULL; 
 	return -1;
-
 }
+*/
 
 int seg_distanceShahbanu(CStrain  *s, CStrain *gfather){
 
@@ -105,6 +109,7 @@ int NSegSitesShahbanu(vector<CStrain*> &sample){
 
 	if(sample.size()==0)return 0;
 	CStrain *cfather=CommonFatherForSample(sample);
+	cerr << t << "  " << cfather->gen << "   ";
 	assert(cfather!=NULL);
 	int d=0;
 	for(unsigned int i=0;i<sample.size();i++){
@@ -114,8 +119,9 @@ int NSegSitesShahbanu(vector<CStrain*> &sample){
 	return d;
 }
 
-CStrain* cf=NULL;
+//CStrain* cf=NULL;
 
+/*
 int NSegSites(vector<CStrain*> &sample){
 	//cerr<< t << "  visited before increment in function " << visited << endl; 
 	visited++;
@@ -133,6 +139,7 @@ int NSegSites(vector<CStrain*> &sample){
 	
 	return d;
 }
+*/
 
 double GeneticDiversityGlobal(){
 
@@ -152,17 +159,20 @@ double GeneticDiversityGlobal(){
 	}
 	//cerr<< t << "  visited before function executed " << visited << endl;
 
-	int n1=NSegSites(sample);
+//	int n1=NSegSites(sample);
 	int n2=NSegSitesShahbanu(sample);
 
-	if(n1!=n2){
-		cerr<< t <<"   n seg sites= "<< n1-n2 <<"  n strains= "<<sample.size()<< "  allstrains  " << allstrains.size() << " visited " << visited << "   f->gen" << cf->gen <<endl;
-	}
+	//if(n1!=n2){
+		//cerr<< t <<"   n seg sites= "<< n1-n2 <<"  n strains= "<<sample.size()<< "  allstrains  " << allstrains.size() << " visited " << visited << "   f->gen" << cf->gen <<endl;
+	//}
 
-	CStrain *f2=CommonFatherForSample(sample);
+	cerr << n2 << endl;
+
+	//CStrain *f2=CommonFatherForSample(sample);
+
 	//cerr<< cf->gen <<"\t"<< f2->gen <<endl;
 	
-	assert(cf==f2);
+	//assert(cf==f2);
 	
 	/*
 	if(t==7){//t==2915 || t==2467)
@@ -234,6 +244,8 @@ double GeneticDiversityLocalAverage(){
 
 void InitialConditions(){
 
+	mig_rate = r0*rec_rate/(double)(Nd*avconnect);
+
 	stotal=0;
 	top = new CStrain(stotal,NULL);
 	//top->color=1;
@@ -275,6 +287,11 @@ void Migration(){
 		CNode* p_node=model.system_state.at(INF).at(i);
 		std::tr1::poisson_distribution<double> poisson( Nd*mig_rate*p_node->degree );
 		unsigned int nmigrants = (unsigned int)poisson(eng);
+		if(nmigrants > (unsigned int) Nd){
+			//cerr<< "Nd " << Nd << " degree " << p_node->degree << " nmigrants " << nmigrants <<endl;
+			//cerr<< "mig_rate " << mig_rate << endl;
+			nmigrants=(unsigned int) Nd;
+		}
 		assert( nmigrants <= (unsigned int) Nd);
 		assert( p_node->pathogens.size()==(unsigned int) Nd);
 		//{
@@ -394,9 +411,9 @@ void Update(){
 
 void Iterate(){
 	while(t<=tmax and inf>0 and sus>=0 and rec>=0){
-		if(t%1000==0){
+		if(t%tprint==0){
 			//cerr<<"n seg sites= "<<NSegSites(allstrains)<<"  n strains= "<<allstrains.size()<<endl;
-			cout<< t <<"\t"<< sus/(double)model.network->get_N() <<"\t"<< inf/(double)model.network->get_N() <<"\t"<< rec/(double)model.network->get_N() <<"\t"<< GeneticDiversityGlobal() <<"\t"<< GeneticDiversityLocalAverage() << endl;
+			cout<< t <<"\t"<< sus/(double)model.network->get_N() <<"\t"<< inf/(double)model.network->get_N() <<"\t"<< rec/(double)model.network->get_N() <<"\t"<< GeneticDiversityGlobal() <<"\t"<< GeneticDiversityLocalAverage() <<"\t"<< allstrains.size()<< endl;
 		}
 	
 		Update();
@@ -415,6 +432,7 @@ int main(int argc, char **argv){
 	if(argc>1)seed=atoi(argv[1]);
 	if(argc>2)r0=atof(argv[2]);
 	eng.seed(seed);
+	//cerr<<seed<<endl;
 
 	model.Initial_Conditions();
 	InitialConditions();
