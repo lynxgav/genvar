@@ -51,8 +51,9 @@ class CStrain{
 	//double I, dI,dII, dSS, S, dS;
 	int gen;
 	private:
-	const double base_print_width=0.005;
 };
+
+const double base_print_width=0.005;
 
 unsigned int CStrain::NNeigh(){
 	if(neighbours.at(0).head==NULL){
@@ -69,11 +70,11 @@ unsigned int CStrain::NNeigh(){
 //father node
 CStrain::CStrain(int i, CStrain *f, double im_d){
 	gen=0;
-	visited=-1;
+	//visited=-1;
 	visitedShahbanu=-1;
 	print_width = base_print_width;
 	ID=i;
-	dI=dII=dS=dSS=I=S=0;
+	//dI=dII=dS=dSS=I=S=0;
 	if(f!=NULL){
 		f->add_neighbour(this, 1, im_d);
 		f->add_link(this,1, im_d);
@@ -113,6 +114,7 @@ CStrain* CStrain::father(){
 //....
 //sumN[rmax] is the sum of N's of all strains at distance rmax
 
+/*
 double CStrain::WeightedSumI(double kapa(double), double distance, CStrain *original, CStrain *exclude){
 	//if(distance>=rmax) return 0;
 	//if(distance>max_dist)max_dist=distance;
@@ -177,7 +179,7 @@ double CStrain::WeightedSumSup(double kapa(double), double distance, bool upward
     	}
     	return weightedsum;
 }
-
+*/
 
 void CStrain::get_diversity(double &diversity, size_t distance, CStrain *exclude){
 	//diversity+=N*distance;
@@ -242,6 +244,7 @@ void CStrain::trim(){
 
 }
 
+/*
 double CStrain::sumNeighI(){
 	std::vector<CLink<CStrain> >::iterator it;
 	double totI=0;
@@ -252,6 +255,7 @@ double CStrain::sumNeighI(){
 	//totI-=(double)nn*I;
 	return totI;
 }
+*/
 /*
 //prints the whole tree starting from this node
 void CStrain::print(ostream &out){
