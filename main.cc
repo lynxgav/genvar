@@ -141,7 +141,16 @@ int NSegSites(vector<CStrain*> &sample){
 }
 */
 
-double GeneticDiversityGlobal(){
+class CDiversityOut
+	{
+	public:
+	CDiversityOut(double d=0, int n=0):distance(d),SegSites(n){}
+	double distance;
+	int SegSites;
+ 	private:
+	};
+
+CDiversityOut GeneticDiversityGlobal(){
 
 	vector<CStrain*> sample;
 
@@ -160,7 +169,7 @@ double GeneticDiversityGlobal(){
 	//cerr<< t << "  visited before function executed " << visited << endl;
 
 //	int n1=NSegSites(sample);
-//	int n2=NSegSitesShahbanu(sample);
+	int n2=NSegSitesShahbanu(sample);
 
 	//if(n1!=n2){
 		//cerr<< t <<"   n seg sites= "<< n1-n2 <<"  n strains= "<<sample.size()<< "  allstrains  " << allstrains.size() << " visited " << visited << "   f->gen" << cf->gen <<endl;
@@ -195,7 +204,7 @@ double GeneticDiversityGlobal(){
 
 	dist=dist/(nt*(nt-1.)/2.);
 
-	return dist;
+	return CDiversityOut(dist, n2);
 }
 
 double GeneticDiversityLocal(CNode* p_node){
@@ -413,7 +422,9 @@ void Iterate(){
 	while(t<=tmax and inf>0 and sus>=0 and rec>=0){
 		if(t%tprint==0){
 			//cerr<<"n seg sites= "<<NSegSites(allstrains)<<"  n strains= "<<allstrains.size()<<endl;
-			cout<< t <<"\t"<< sus/(double)model.network->get_N() <<"\t"<< inf/(double)model.network->get_N() <<"\t"<< rec/(double)model.network->get_N() <<"\t"<< GeneticDiversityGlobal() <<"\t"<< GeneticDiversityLocalAverage() <<"\t"<< allstrains.size()<< endl;
+			double GDLAverage=GeneticDiversityLocalAverage();
+			CDiversityOut GDGlobal=GeneticDiversityGlobal();
+			cout<< t <<"\t"<< sus/(double)model.network->get_N() <<"\t"<< inf/(double)model.network->get_N() <<"\t"<< rec/(double)model.network->get_N() <<"\t"<< GDGlobal.distance <<"\t"<< GDLAverage  <<"\t"<< GDGlobal.SegSites<<"\t"<< allstrains.size()<< endl;
 		}
 	
 		Update();
