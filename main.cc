@@ -26,7 +26,7 @@ int nd=5;
 int t=1;
 int tmax=1000000;
 int tstep=1;
-int tprint=1000;
+int tprint=100;
 //time
 
 //CNetwork *contacts=new CRRGraph(5000, 4);
@@ -109,7 +109,7 @@ int NSegSitesShahbanu(vector<CStrain*> &sample){
 
 	if(sample.size()==0)return 0;
 	CStrain *cfather=CommonFatherForSample(sample);
-	cerr << t << "  " << cfather->gen << "   ";
+	//cerr << t << "  " << cfather->gen << "   ";
 	assert(cfather!=NULL);
 	int d=0;
 	for(unsigned int i=0;i<sample.size();i++){
@@ -160,13 +160,13 @@ double GeneticDiversityGlobal(){
 	//cerr<< t << "  visited before function executed " << visited << endl;
 
 //	int n1=NSegSites(sample);
-	int n2=NSegSitesShahbanu(sample);
+//	int n2=NSegSitesShahbanu(sample);
 
 	//if(n1!=n2){
 		//cerr<< t <<"   n seg sites= "<< n1-n2 <<"  n strains= "<<sample.size()<< "  allstrains  " << allstrains.size() << " visited " << visited << "   f->gen" << cf->gen <<endl;
 	//}
 
-	cerr << n2 << endl;
+	//cerr << n2 << endl;
 
 	//CStrain *f2=CommonFatherForSample(sample);
 

@@ -44,14 +44,14 @@ class CStrain{
 	double print_width;
 	bool is_leaf, dead;
 	int ID;
-	unsigned int visited;
+	//unsigned int visited;
 	unsigned int visitedShahbanu;
-	double x,y;
-	double color;
-	double I, dI,dII, dSS, S, dS;
+	float x,y;
+	float color;
+	//double I, dI,dII, dSS, S, dS;
 	int gen;
 	private:
-	static const double base_print_width=0.005;
+	const double base_print_width=0.005;
 };
 
 unsigned int CStrain::NNeigh(){
