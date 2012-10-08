@@ -286,7 +286,6 @@ void Recovery(){
 		}
 	}
 	
-
 	//cerr << "number of recoveries  " << j << endl;
 }
 
@@ -294,7 +293,12 @@ void Migration(){
 
 	for (unsigned int i=0; i < model.system_state.at(INF).size(); i++){
 		CNode* p_node=model.system_state.at(INF).at(i);
+		// my version
 		std::tr1::poisson_distribution<double> poisson( Nd*mig_rate*p_node->degree );
+		// Diana's version
+		//std::tr1::poisson_distribution<double> poisson ( Nd*mig_rate*p_node->count_neighbours_state(SUS) );
+		//fully mixed
+		//std::tr1::poisson_distribution<double> poisson ( Nd*mig_rate*model.system_state.at(SUS).size() );
 		unsigned int nmigrants = (unsigned int)poisson(eng);
 		if(nmigrants > (unsigned int) Nd){
 			//cerr<< "Nd " << Nd << " degree " << p_node->degree << " nmigrants " << nmigrants <<endl;
