@@ -16,11 +16,11 @@ int stotal;
 vector<CStrain*> allstrains;
 vector<CStrain*> strains;
 CStrain *top=NULL;
-int Nd = 10;
-double rec_rate = 0.01;
+int Nd = 5;
+double rec_rate = 0.05;
 double r0;
-int pop=1000;
-double avconnect=pop-1;//4.;
+int pop=900;
+double avconnect=4;//pop-1;//4.;
 double mig_rate;// = r0*rec_rate/(double)(Nd*avconnect);
 double mutat_rate = 0.0004;
 int nt=50;
@@ -30,13 +30,13 @@ int tmax=1000000;
 int tstep=1;
 int tprint=100;
 //time
-bool fullymixed=true;
+bool fullymixed=false;
 
 // change avconnect, CNetwork and poisson if fullymixed=true;
 
 //CNetwork *contacts=new CRRGraph(5000, 4);
-//CNetwork *contacts=new CLattice(32, 32);
-CNetwork *contacts=new CFullymixed(pop);
+CNetwork *contacts=new CLattice(32, 32);
+//CNetwork *contacts=new CFullymixed(pop);
 CModel model(contacts);
 
 unsigned int visited=0;
@@ -303,11 +303,11 @@ void Migration(){
 		// my version
 		//std::tr1::poisson_distribution<double> poisson( Nd*mig_rate*p_node->degree );
 		// Diana's version
-		//std::tr1::poisson_distribution<double> poisson ( Nd*mig_rate*p_node->count_neighbours_state(SUS) );
+		std::tr1::poisson_distribution<double> poisson( Nd*mig_rate*p_node->count_neighbours_state(SUS) );
 		//fully mixed Diana's version
-		//std::tr1::poisson_distribution<double> poisson ( Nd*mig_rate*model.system_state.at(SUS).size() );
+		//std::tr1::poisson_distribution<double> poisson( Nd*mig_rate*model.system_state.at(SUS).size() );
 		//fully mixed my version
-		std::tr1::poisson_distribution<double> poisson ( Nd*mig_rate*(pop-1) );
+		//std::tr1::poisson_distribution<double> poisson( Nd*mig_rate*(pop-1) );
 
 		unsigned int nmigrants = (unsigned int)poisson(eng);
 		// check if it makes sense
