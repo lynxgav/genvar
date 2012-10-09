@@ -26,7 +26,7 @@ class CNetwork
 	void clear();
 	unsigned int get_N(){
 		return nodes.size();
-		}
+	}
 	unsigned int N;
 	double TotalProb;
  	private:

@@ -3,6 +3,7 @@
 #include"node.h"
 #include"rrgraph.h"
 #include"lattice.h"
+#include"fullymixed.h"
 #include"model.h"
 using namespace std;
 int seed=0;
@@ -15,10 +16,11 @@ int stotal;
 vector<CStrain*> allstrains;
 vector<CStrain*> strains;
 CStrain *top=NULL;
-int Nd = 5;
-double rec_rate = 0.05;
-double r0;// = 2.;
-double avconnect=4.;
+int Nd = 10;
+double rec_rate = 0.01;
+double r0;
+int pop=1000;
+double avconnect=pop-1;//4.;
 double mig_rate;// = r0*rec_rate/(double)(Nd*avconnect);
 double mutat_rate = 0.0004;
 int nt=50;
@@ -28,9 +30,13 @@ int tmax=1000000;
 int tstep=1;
 int tprint=100;
 //time
+bool fullymixed=true;
+
+// change avconnect, CNetwork and poisson if fullymixed=true;
 
 //CNetwork *contacts=new CRRGraph(5000, 4);
-CNetwork *contacts=new CLattice(32, 32);
+//CNetwork *contacts=new CLattice(32, 32);
+CNetwork *contacts=new CFullymixed(pop);
 CModel model(contacts);
 
 unsigned int visited=0;
@@ -293,23 +299,26 @@ void Migration(){
 
 	for (unsigned int i=0; i < model.system_state.at(INF).size(); i++){
 		CNode* p_node=model.system_state.at(INF).at(i);
+
 		// my version
-		std::tr1::poisson_distribution<double> poisson( Nd*mig_rate*p_node->degree );
+		//std::tr1::poisson_distribution<double> poisson( Nd*mig_rate*p_node->degree );
 		// Diana's version
 		//std::tr1::poisson_distribution<double> poisson ( Nd*mig_rate*p_node->count_neighbours_state(SUS) );
-		//fully mixed
+		//fully mixed Diana's version
 		//std::tr1::poisson_distribution<double> poisson ( Nd*mig_rate*model.system_state.at(SUS).size() );
+		//fully mixed my version
+		std::tr1::poisson_distribution<double> poisson ( Nd*mig_rate*(pop-1) );
+
 		unsigned int nmigrants = (unsigned int)poisson(eng);
+		// check if it makes sense
 		if(nmigrants > (unsigned int) Nd){
-			//cerr<< "Nd " << Nd << " degree " << p_node->degree << " nmigrants " << nmigrants <<endl;
-			//cerr<< "mig_rate " << mig_rate << endl;
+			//cerr<<nmigrants<<endl;
 			nmigrants=(unsigned int) Nd;
+
 		}
 		assert( nmigrants <= (unsigned int) Nd);
 		assert( p_node->pathogens.size()==(unsigned int) Nd);
-		//{
-			//cerr<<"Number of migrants <= Nd"<<endl;
-		//};
+		
 		unsigned int np=p_node->pathogens.size();
 		std::tr1::uniform_int<int> unif1(0,np-1);
 		while(p_node->migrants.size()<nmigrants){
@@ -321,10 +330,17 @@ void Migration(){
 	
 	for (unsigned int i=0; i < model.system_state.at(INF).size(); i++){
 		CNode* p_node=model.system_state.at(INF).at(i);
-		unsigned int nrecipients=p_node->count_neighbours_state(SUS);
+
+		unsigned int nrecipients;
+		if(!fullymixed){
+			nrecipients=p_node->count_neighbours_state(SUS);
+		}
+		else {
+			nrecipients=model.system_state.at(SUS).size();
+		}
 
 		if(nrecipients==0) {
-			p_node->migrants.clear(); 
+			p_node->migrants.clear();
 			continue;
 		}
 
@@ -333,17 +349,24 @@ void Migration(){
 		map<int,CStrain*>::iterator itt;
 
 		for(itt=p_node->migrants.begin(); itt != p_node->migrants.end(); itt++){
-			list<CNode*>::iterator it; int count=0;
+
 			int chosen=unif2(eng);
-			for(it=p_node->neighbours.begin(); count!=chosen; it++) {
-				if( (*it)->state == SUS ){
-					count++;
-					if(count==chosen){
-						break;
+
+			if(!fullymixed){
+				list<CNode*>::iterator it; int count=0;
+				for(it=p_node->neighbours.begin(); count!=chosen; it++) {
+					if( (*it)->state == SUS ){
+						count++;
+						if(count==chosen){
+							break;
+						}
 					}
 				}
+				(*it)->pathogens.push_back(itt->second);
 			}
-			(*it)->pathogens.push_back(itt->second);
+			else {
+				model.system_state.at(SUS).at(chosen-1)->pathogens.push_back(itt->second);
+			}
 		}
 		p_node->migrants.clear();
 
@@ -375,7 +398,7 @@ void Migration(){
 			j++;
 		}
 	}
-	//cerr << "number of migrations  " << j << endl;
+	//cerr << "number of migrations  " << j << "  Nd  " << Nd << "  mig_rate  " << mig_rate << "  sus  " << model.system_state.at(SUS).size() << endl;
 
 	vector<CNode *>::iterator it;
 	for (it=model.network->nodes.begin(); it!=model.network->nodes.end(); it++) {
