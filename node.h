@@ -15,6 +15,7 @@ class CNode
 	~CNode();
 	list<CNode*> neighbours;
 	vector<CStrain*> pathogens;
+	vector<CStrain*> migrantsV;
 	map<int,CStrain*> migrants;
 	bool add_neighbour(CNode*, bool trial=false);
 	bool remove_neighbour(CNode*, bool trial=false);

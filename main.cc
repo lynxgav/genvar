@@ -19,7 +19,7 @@ CStrain *top=NULL;
 int Nd = 5;
 double rec_rate = 0.05;
 double r0;
-int pop=900;
+int pop=1000;
 double avconnect=4;//pop-1;//4.;
 double mig_rate;// = r0*rec_rate/(double)(Nd*avconnect);
 double mutat_rate = 0.0004;
@@ -31,6 +31,7 @@ int tstep=1;
 int tprint=100;
 //time
 bool fullymixed=false;
+bool versionD=true;
 
 // change avconnect, CNetwork and poisson if fullymixed=true;
 
@@ -295,97 +296,7 @@ void Recovery(){
 	//cerr << "number of recoveries  " << j << endl;
 }
 
-void Migration(){
-
-	for (unsigned int i=0; i < model.system_state.at(INF).size(); i++){
-		CNode* p_node=model.system_state.at(INF).at(i);
-
-		// my version
-		//std::tr1::poisson_distribution<double> poisson( Nd*mig_rate*p_node->degree );
-		// Diana's version
-		std::tr1::poisson_distribution<double> poisson( Nd*mig_rate*p_node->count_neighbours_state(SUS) );
-		//fully mixed Diana's version
-		//std::tr1::poisson_distribution<double> poisson( Nd*mig_rate*model.system_state.at(SUS).size() );
-		//fully mixed my version
-		//std::tr1::poisson_distribution<double> poisson( Nd*mig_rate*(pop-1) );
-
-		unsigned int nmigrants = (unsigned int)poisson(eng);
-		// check if it makes sense
-		if(nmigrants > (unsigned int) Nd){
-			//cerr<<nmigrants<<endl;
-			nmigrants=(unsigned int) Nd;
-
-		}
-		assert( nmigrants <= (unsigned int) Nd);
-		assert( p_node->pathogens.size()==(unsigned int) Nd);
-		
-		unsigned int np=p_node->pathogens.size();
-		std::tr1::uniform_int<int> unif1(0,np-1);
-		while(p_node->migrants.size()<nmigrants){
-			int chosen=unif1(eng);
-			p_node->migrants[chosen]=p_node->pathogens.at(chosen);
-		}
-	}
-
-	
-	for (unsigned int i=0; i < model.system_state.at(INF).size(); i++){
-		CNode* p_node=model.system_state.at(INF).at(i);
-
-		unsigned int nrecipients;
-		if(!fullymixed){
-			nrecipients=p_node->count_neighbours_state(SUS);
-		}
-		else {
-			nrecipients=model.system_state.at(SUS).size();
-		}
-
-		if(nrecipients==0) {
-			p_node->migrants.clear();
-			continue;
-		}
-
-		std::tr1::uniform_int<int> unif2(1,nrecipients);
-
-		map<int,CStrain*>::iterator itt;
-
-		for(itt=p_node->migrants.begin(); itt != p_node->migrants.end(); itt++){
-
-			int chosen=unif2(eng);
-
-			if(!fullymixed){
-				list<CNode*>::iterator it; int count=0;
-				for(it=p_node->neighbours.begin(); count!=chosen; it++) {
-					if( (*it)->state == SUS ){
-						count++;
-						if(count==chosen){
-							break;
-						}
-					}
-				}
-				(*it)->pathogens.push_back(itt->second);
-			}
-			else {
-				model.system_state.at(SUS).at(chosen-1)->pathogens.push_back(itt->second);
-			}
-		}
-		p_node->migrants.clear();
-
-	}
-	/*
-	int j=0;
-
-	vector<CNode *>::iterator it;
-	for (it=model.network->nodes.begin(); it!=model.network->nodes.end(); it++) {
-		if( (*it)->pathogens.size()>0 && (*it)->state==SUS ) {
-			sus--; inf++;
-			model.UpdateSystemState( (*it), SUS, INF);
-			j++;
-			
-		}
-		assert( (*it)->migrants.size()==0 );
-		if ( (*it)->pathogens.size()>0) { assert ( (*it)->state==INF ); }
-	}
-	*/
+void UpdateSus(bool vD){
 
 	int j=0;
 	vector<CNode*> susceptibles;
@@ -402,10 +313,228 @@ void Migration(){
 
 	vector<CNode *>::iterator it;
 	for (it=model.network->nodes.begin(); it!=model.network->nodes.end(); it++) {
-		assert( (*it)->migrants.size()==0 );
+		if(vD) {
+			assert( (*it)->migrantsV.size()==0 );
+		}
+		else {
+			assert( (*it)->migrants.size()==0 );
+		}
 		if ( (*it)->pathogens.size()>0) { assert ( (*it)->state==INF ); }
 	}
 
+}
+
+void MigrationGF(){
+
+	for (unsigned int i=0; i < model.system_state.at(INF).size(); i++){
+		CNode* p_node=model.system_state.at(INF).at(i);
+
+		//fully mixed Diana's version
+		std::tr1::poisson_distribution<double> poisson( Nd*mig_rate*model.system_state.at(SUS).size() );
+		//fully mixed my version
+		//std::tr1::poisson_distribution<double> poisson( Nd*mig_rate*(pop-1) );
+
+		unsigned int nmigrants = (unsigned int)poisson(eng);
+		// check if it makes sense
+		if(nmigrants > (unsigned int) Nd){
+			//cerr<<nmigrants<<endl;
+			nmigrants=(unsigned int) Nd;
+		}
+
+		assert( nmigrants <= (unsigned int) Nd);
+		assert( p_node->pathogens.size()==(unsigned int) Nd);
+		
+		unsigned int np=p_node->pathogens.size();
+		std::tr1::uniform_int<int> unif1(0,np-1);
+		while(p_node->migrants.size()<nmigrants){
+			int chosen=unif1(eng);
+			p_node->migrants[chosen]=p_node->pathogens.at(chosen);
+		}
+	}
+
+	
+	for (unsigned int i=0; i < model.system_state.at(INF).size(); i++){
+
+		CNode* p_node=model.system_state.at(INF).at(i);
+
+		unsigned int nrecipients=model.system_state.at(SUS).size();
+
+		if(nrecipients==0 || p_node->migrants.size()==0) {
+			p_node->migrants.clear();
+			continue;
+		}
+
+		std::tr1::uniform_int<int> unif2(1,nrecipients);
+
+		map<int,CStrain*>::iterator itt;
+
+		for(itt=p_node->migrants.begin(); itt != p_node->migrants.end(); itt++){
+			int chosen=unif2(eng);
+			model.system_state.at(SUS).at(chosen-1)->pathogens.push_back(itt->second);
+		}
+		p_node->migrants.clear();
+	}
+	UpdateSus(versionD);
+}
+
+void MigrationGnF(){
+
+	for (unsigned int i=0; i < model.system_state.at(INF).size(); i++){
+		CNode* p_node=model.system_state.at(INF).at(i);
+
+		// my version
+		//std::tr1::poisson_distribution<double> poisson( Nd*mig_rate*p_node->degree );
+		// Diana's version
+		std::tr1::poisson_distribution<double> poisson( Nd*mig_rate*p_node->count_neighbours_state(SUS) );
+
+		unsigned int nmigrants = (unsigned int)poisson(eng);
+		// check if it makes sense
+		if(nmigrants > (unsigned int) Nd){
+			//cerr<<nmigrants<<endl;
+			nmigrants=(unsigned int) Nd;
+		}
+
+		assert( nmigrants <= (unsigned int) Nd);
+		assert( p_node->pathogens.size()==(unsigned int) Nd);
+		
+		unsigned int np=p_node->pathogens.size();
+		std::tr1::uniform_int<int> unif1(0,np-1);
+		while(p_node->migrants.size()<nmigrants){
+			int chosen=unif1(eng);
+			p_node->migrants[chosen]=p_node->pathogens.at(chosen);
+		}
+	}
+
+	
+	for (unsigned int i=0; i < model.system_state.at(INF).size(); i++){
+
+		CNode* p_node=model.system_state.at(INF).at(i);
+
+		unsigned int nrecipients=p_node->count_neighbours_state(SUS);
+
+		if(nrecipients==0 || p_node->migrants.size()==0) {
+			p_node->migrants.clear();
+			continue;
+		}
+
+		std::tr1::uniform_int<int> unif2(1,nrecipients);
+
+		map<int,CStrain*>::iterator itt;
+
+		for(itt=p_node->migrants.begin(); itt != p_node->migrants.end(); itt++){
+			int chosen=unif2(eng);
+			list<CNode*>::iterator it; int count=0;
+			for(it=p_node->neighbours.begin(); count!=chosen; it++) {
+				if( (*it)->state == SUS ){
+					count++;
+					if(count==chosen){
+						break;
+					}
+				}
+			}
+			(*it)->pathogens.push_back(itt->second);
+		}
+		p_node->migrants.clear();
+	}
+	UpdateSus(versionD);
+}
+
+void MigrationDF(){
+
+	// Diana's version
+	for (unsigned int i=0; i < model.system_state.at(INF).size(); i++){
+		CNode* p_node=model.system_state.at(INF).at(i);
+		assert( p_node->pathogens.size()==(unsigned int) Nd);
+		for(unsigned int j=0; j < p_node->pathogens.size(); j++){
+			if( unif(eng) < mig_rate ){
+				p_node->migrantsV.push_back( p_node->pathogens.at(j) );
+			}
+		}
+	}
+
+	for (unsigned int i=0; i < model.system_state.at(INF).size(); i++){
+
+		CNode* p_node=model.system_state.at(INF).at(i);
+
+		unsigned int nrecipients=model.system_state.at(SUS).size()+model.system_state.at(INF).size()-1;
+
+		if(nrecipients==0 || p_node->migrantsV.size()==0) {
+			p_node->migrantsV.clear();
+			continue;
+		}
+
+		for(int l=SUS; l<REC; l++){			
+			for(unsigned int j=0; j < model.system_state.at(l).size(); j++){
+				if(l==SUS) {assert ( model.system_state.at(SUS).at(j) != p_node );}
+				if (l==INF && model.system_state.at(INF).at(j) == p_node ){continue;}
+				for(unsigned int k=0; k < p_node->migrantsV.size(); k++){
+					model.system_state.at(l).at(j)->pathogens.push_back(p_node->migrantsV.at(k));
+				}
+			}
+		}	
+		p_node->migrantsV.clear();
+	}
+
+	UpdateSus(versionD);
+
+}
+
+void MigrationDnF(){
+
+	// Diana's version
+	for (unsigned int i=0; i < model.system_state.at(INF).size(); i++){
+		CNode* p_node=model.system_state.at(INF).at(i);
+		assert( p_node->pathogens.size()==(unsigned int) Nd);
+		for(unsigned int j=0; j < p_node->pathogens.size(); j++){
+			if( unif(eng) < mig_rate ){
+				p_node->migrantsV.push_back( p_node->pathogens.at(j) );
+			}
+		}
+	}
+
+	for (unsigned int i=0; i < model.system_state.at(INF).size(); i++){
+
+		CNode* p_node=model.system_state.at(INF).at(i);
+
+		unsigned int nrecipients=p_node->count_neighbours_state(SUS)+p_node->count_neighbours_state(INF);
+
+		if(nrecipients==0 || p_node->migrantsV.size()==0) {
+			p_node->migrantsV.clear();
+			continue;
+		}
+
+		list<CNode*>::iterator it;
+		for(it=p_node->neighbours.begin(); it!=p_node->neighbours.end(); it++){
+			if( (*it)->state == SUS || (*it)->state == INF ){
+				for(unsigned int j=0; j < p_node->migrantsV.size(); j++){
+					(*it)->pathogens.push_back( p_node->migrantsV.at(j) );
+				}
+			}
+		}	
+		p_node->migrantsV.clear();
+	}
+
+	UpdateSus(versionD);
+
+}
+
+void Migration(){
+	if(versionD){
+		if(fullymixed){
+			MigrationDF();
+		}
+		else{
+			MigrationDnF();
+		}
+	}
+	else {
+		if(fullymixed){
+			MigrationGF();
+		}
+		else{
+			MigrationGnF();
+		}
+	}
 }
 
 void Reproduction(){
