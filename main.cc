@@ -40,7 +40,6 @@ CNetwork *contacts=new CLattice(32, 32);
 //CNetwork *contacts=new CFullymixed(pop);
 CModel model(contacts);
 
-unsigned int visited=0;
 unsigned int iteration=0;
 
 int distance(CStrain *s1, CStrain *s2){
@@ -78,84 +77,35 @@ CStrain* CommonFatherForSample(vector<CStrain*> &sample){
 	return commonfather;
 }
 
-/*
-int seg_distance(CStrain *s1, CStrain *s2, CStrain *&f){
-	if(s1->visited==visited and s2->visited==visited) {f=CommonFatherForTwoNodes(s1,s2);return 0;}
-	if(s1==s2) {f=s1; 
-		s1->visited=s2->visited=visited;
-		return 0;
-		}
-	if(s1->gen > s2->gen)swap(s1,s2);
+int seg_distance(CStrain  *s, CStrain *gfather){
 
-	if(s2->gen > s1->gen){
-		if(s2->father()->visited==visited){
-			s1->visited=s2->visited=visited; 
-			return 1;
-		}
-		s1->visited=s2->visited=visited; 
-		return 1+seg_distance(s1, s2->father(),f);
-	}
-	s1->visited=s2->visited=visited; 
-	if(s2->gen == s1->gen) return 2+seg_distance(s1->father(), s2->father(),f);
+	if(s->visited==iteration or s==gfather) return 0;
 
-	f=NULL; 
-	return -1;
-}
-*/
-
-int seg_distanceShahbanu(CStrain  *s, CStrain *gfather){
-
-	if(s->visitedShahbanu==iteration or s==gfather) return 0;
-
-	s->visitedShahbanu=iteration;
-	return 1+seg_distanceShahbanu(s->father(),gfather);
+	s->visited=iteration;
+	return 1+seg_distance(s->father(),gfather);
 }
 
-int NSegSitesShahbanu(vector<CStrain*> &sample){
+int NSegSites(vector<CStrain*> &sample){
 	iteration++;
 
 	if(sample.size()==0)return 0;
 	CStrain *cfather=CommonFatherForSample(sample);
-	//cerr << t << "  " << cfather->gen << "   ";
 	assert(cfather!=NULL);
 	int d=0;
 	for(unsigned int i=0;i<sample.size();i++){
-		d+=seg_distanceShahbanu(sample.at(i), cfather);	
+		d+=seg_distance(sample.at(i), cfather);	
 	}
 
 	return d;
 }
 
-//CStrain* cf=NULL;
-
-/*
-int NSegSites(vector<CStrain*> &sample){
-	//cerr<< t << "  visited before increment in function " << visited << endl; 
-	visited++;
-	//cerr<< t << "  visited after increment in function " << visited << endl;
-	if(sample.size()==0)return 0;
-	CStrain *common_father=sample.at(0);
-	int d=0;
-	for(unsigned int i=1;i<sample.size();i++){
-		
-		d+=seg_distance(common_father, sample.at(i), common_father);	
-		assert(common_father!=NULL);
-	}
-
-	cf=common_father;
-	
-	return d;
-}
-*/
-
-class CDiversityOut
-	{
+class CDiversityOut{
 	public:
 	CDiversityOut(double d=0, int n=0):distance(d),SegSites(n){}
 	double distance;
 	int SegSites;
  	private:
-	};
+};
 
 CDiversityOut GeneticDiversityGlobal(){
 
@@ -167,36 +117,11 @@ CDiversityOut GeneticDiversityGlobal(){
 	for (int i=0; i<nt; i++){
 		int chosen=unif4(eng);
 		CNode* p_node=model.system_state.at(INF).at(chosen);
-		/*if(t==1458)//t==2915 || t==2467){
-			cerr << p_node->ID << "  ";
-		}*/
 		chosen=unif5(eng);
 		sample.push_back(p_node->pathogens.at(chosen));
 	}
-	//cerr<< t << "  visited before function executed " << visited << endl;
 
-//	int n1=NSegSites(sample);
-	int n2=NSegSitesShahbanu(sample);
-
-	//if(n1!=n2){
-		//cerr<< t <<"   n seg sites= "<< n1-n2 <<"  n strains= "<<sample.size()<< "  allstrains  " << allstrains.size() << " visited " << visited << "   f->gen" << cf->gen <<endl;
-	//}
-
-	//cerr << n2 << endl;
-
-	//CStrain *f2=CommonFatherForSample(sample);
-
-	//cerr<< cf->gen <<"\t"<< f2->gen <<endl;
-	
-	//assert(cf==f2);
-	
-	/*
-	if(t==7){//t==2915 || t==2467)
-		for (int i=0; i<nt; i++){	
-			cerr << sample.at(i)->visited << "  ";
-		}
-	}
-	*/	
+	int ss=NSegSites(sample);
 
 	double dist=0.;
 	int k=0;
@@ -211,7 +136,7 @@ CDiversityOut GeneticDiversityGlobal(){
 
 	dist=dist/(nt*(nt-1.)/2.);
 
-	return CDiversityOut(dist, n2);
+	return CDiversityOut(dist, ss);
 }
 
 double GeneticDiversityLocal(CNode* p_node){
@@ -264,7 +189,6 @@ void InitialConditions(){
 
 	stotal=0;
 	top = new CStrain(stotal,NULL);
-	//top->color=1;
 	allstrains.push_back(top);
 	stotal++;
 
@@ -296,7 +220,7 @@ void Recovery(){
 	//cerr << "number of recoveries  " << j << endl;
 }
 
-void UpdateSus(bool vD){
+void UpdateSus(){
 
 	int j=0;
 	vector<CNode*> susceptibles;
@@ -313,7 +237,7 @@ void UpdateSus(bool vD){
 
 	vector<CNode *>::iterator it;
 	for (it=model.network->nodes.begin(); it!=model.network->nodes.end(); it++) {
-		if(vD) {
+		if(versionD) {
 			assert( (*it)->migrantsV.size()==0 );
 		}
 		else {
@@ -374,7 +298,6 @@ void MigrationGF(){
 		}
 		p_node->migrants.clear();
 	}
-	UpdateSus(versionD);
 }
 
 void MigrationGnF(){
@@ -436,7 +359,6 @@ void MigrationGnF(){
 		}
 		p_node->migrants.clear();
 	}
-	UpdateSus(versionD);
 }
 
 void MigrationDF(){
@@ -474,9 +396,6 @@ void MigrationDF(){
 		}	
 		p_node->migrantsV.clear();
 	}
-
-	UpdateSus(versionD);
-
 }
 
 void MigrationDnF(){
@@ -513,9 +432,6 @@ void MigrationDnF(){
 		}	
 		p_node->migrantsV.clear();
 	}
-
-	UpdateSus(versionD);
-
 }
 
 void Migration(){
@@ -535,6 +451,7 @@ void Migration(){
 			MigrationGnF();
 		}
 	}
+	UpdateSus();
 }
 
 void Reproduction(){
@@ -577,7 +494,6 @@ void Update(){
 void Iterate(){
 	while(t<=tmax and inf>0 and sus>=0 and rec>=0){
 		if(t%tprint==0){
-			//cerr<<"n seg sites= "<<NSegSites(allstrains)<<"  n strains= "<<allstrains.size()<<endl;
 			double GDLAverage=GeneticDiversityLocalAverage();
 			CDiversityOut GDGlobal=GeneticDiversityGlobal();
 			cout<< t <<"\t"<< sus/(double)model.network->get_N() <<"\t"<< inf/(double)model.network->get_N() <<"\t"<< rec/(double)model.network->get_N() <<"\t"<< GDGlobal.distance <<"\t"<< GDLAverage  <<"\t"<< GDGlobal.SegSites<<"\t"<< allstrains.size()<< endl;
@@ -592,7 +508,6 @@ void Iterate(){
 	}
 
 }
-
 
 int main(int argc, char **argv){
 
