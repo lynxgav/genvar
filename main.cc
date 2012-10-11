@@ -20,7 +20,7 @@ int Nd = 5;
 double rec_rate = 0.05;
 double r0;
 int pop=1000;
-double avconnect=4;//pop-1;//4.;
+double avconnect=pop-1;//4.;
 double mig_rate;// = r0*rec_rate/(double)(Nd*avconnect);
 double mutat_rate = 0.0004;
 int nt=50;
@@ -30,14 +30,15 @@ int tmax=1000000;
 int tstep=1;
 int tprint=100;
 //time
-bool fullymixed=false;
-bool versionD=true;
+bool fullymixed=true;
+bool versionD=false;
+bool withreplacement=true;
 
 // change avconnect, CNetwork and poisson if fullymixed=true;
 
 //CNetwork *contacts=new CRRGraph(5000, 4);
-CNetwork *contacts=new CLattice(32, 32);
-//CNetwork *contacts=new CFullymixed(pop);
+//CNetwork *contacts=new CLattice(32, 32);
+CNetwork *contacts=new CFullymixed(pop);
 CModel model(contacts);
 
 unsigned int iteration=0;
@@ -300,6 +301,50 @@ void MigrationGF(){
 	}
 }
 
+void MigrationGFwR(){
+
+	for (unsigned int i=0; i < model.system_state.at(INF).size(); i++){
+		CNode* p_node=model.system_state.at(INF).at(i);
+
+		//fully mixed Diana's version
+		std::tr1::poisson_distribution<double> poisson( Nd*mig_rate*model.system_state.at(SUS).size() );
+		//fully mixed my version
+		//std::tr1::poisson_distribution<double> poisson( Nd*mig_rate*(pop-1) );
+
+		unsigned int nmigrants = (unsigned int)poisson(eng);
+		
+		assert( p_node->pathogens.size()==(unsigned int) Nd);
+		
+		unsigned int np=p_node->pathogens.size();
+		std::tr1::uniform_int<int> unif1(0,np-1);
+		while(p_node->migrantsV.size()<nmigrants){
+			int chosen=unif1(eng);
+			p_node->migrantsV.push_back( p_node->pathogens.at(chosen) );
+		}
+	}
+
+	
+	for (unsigned int i=0; i < model.system_state.at(INF).size(); i++){
+
+		CNode* p_node=model.system_state.at(INF).at(i);
+
+		unsigned int nrecipients=model.system_state.at(SUS).size();
+
+		if(nrecipients==0 || p_node->migrantsV.size()==0) {
+			p_node->migrantsV.clear();
+			continue;
+		}
+
+		std::tr1::uniform_int<int> unif2(1,nrecipients);
+
+		for(unsigned int k=0; k < p_node->migrantsV.size(); k++){
+			int chosen=unif2(eng);
+			model.system_state.at(SUS).at(chosen-1)->pathogens.push_back(p_node->migrantsV.at(k));
+		}
+		p_node->migrantsV.clear();
+	}
+}
+
 void MigrationGnF(){
 
 	for (unsigned int i=0; i < model.system_state.at(INF).size(); i++){
@@ -358,6 +403,57 @@ void MigrationGnF(){
 			(*it)->pathogens.push_back(itt->second);
 		}
 		p_node->migrants.clear();
+	}
+}
+
+void MigrationGnFwR(){
+
+	for (unsigned int i=0; i < model.system_state.at(INF).size(); i++){
+		CNode* p_node=model.system_state.at(INF).at(i);
+
+		// my version
+		//std::tr1::poisson_distribution<double> poisson( Nd*mig_rate*p_node->degree );
+		// Diana's version
+		std::tr1::poisson_distribution<double> poisson( Nd*mig_rate*p_node->count_neighbours_state(SUS) );
+		unsigned int nmigrants = (unsigned int)poisson(eng);
+		assert( p_node->pathogens.size()==(unsigned int) Nd);
+		
+		unsigned int np=p_node->pathogens.size();
+		std::tr1::uniform_int<int> unif1(0,np-1);
+		while(p_node->migrantsV.size()<nmigrants){
+			int chosen=unif1(eng);
+			p_node->migrantsV.push_back( p_node->pathogens.at(chosen) );
+		}
+
+	}
+
+	for (unsigned int i=0; i < model.system_state.at(INF).size(); i++){
+
+		CNode* p_node=model.system_state.at(INF).at(i);
+
+		unsigned int nrecipients=p_node->count_neighbours_state(SUS);
+
+		if(nrecipients==0 || p_node->migrantsV.size()==0) {
+			p_node->migrantsV.clear();
+			continue;
+		}
+
+		std::tr1::uniform_int<int> unif2(1,nrecipients);
+
+		for(unsigned int k=0; k < p_node->migrantsV.size(); k++){
+			int chosen=unif2(eng);
+			list<CNode*>::iterator it; int count=0;
+			for(it=p_node->neighbours.begin(); count!=chosen; it++) {
+				if( (*it)->state == SUS ){
+					count++;
+					if(count==chosen){
+						break;
+					}
+				}
+			}
+			(*it)->pathogens.push_back(p_node->migrantsV.at(k));
+		}
+		p_node->migrantsV.clear();
 	}
 }
 
@@ -445,10 +541,20 @@ void Migration(){
 	}
 	else {
 		if(fullymixed){
-			MigrationGF();
+			if(withreplacement){
+				MigrationGFwR();
+			}
+			else{
+				MigrationGF();
+			}
 		}
 		else{
-			MigrationGnF();
+			if(withreplacement){
+				MigrationGnFwR();
+			}
+			else{
+				MigrationGnF();
+			}
 		}
 	}
 	UpdateSus();
