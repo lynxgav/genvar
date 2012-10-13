@@ -20,7 +20,7 @@ int Nd = 5;
 double rec_rate = 0.05;
 double r0;
 int pop=1000;
-double avconnect=pop-1;//4.;
+double avconnect=4;//pop-1;//4.;
 double mig_rate;// = r0*rec_rate/(double)(Nd*avconnect);
 double mutat_rate = 0.0004;
 int nt=50;
@@ -30,15 +30,15 @@ int tmax=1000000;
 int tstep=1;
 int tprint=100;
 //time
-bool fullymixed=true;
+bool fullymixed=false;
 bool versionD=false;
-bool withreplacement=true;
+bool withreplacement=false;
 
 // change avconnect, CNetwork and poisson if fullymixed=true;
 
 //CNetwork *contacts=new CRRGraph(5000, 4);
-//CNetwork *contacts=new CLattice(32, 32);
-CNetwork *contacts=new CFullymixed(pop);
+CNetwork *contacts=new CLattice(32, 32);
+//CNetwork *contacts=new CFullymixed(pop);
 CModel model(contacts);
 
 unsigned int iteration=0;
