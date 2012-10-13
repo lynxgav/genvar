@@ -84,6 +84,6 @@ int CNode::count_neighbours_state(int s){
 
 void CNode::add_pathogen(CStrain *s){
 	pathogens.push_back(s);
-	s->NCopies++;
+	//s->NCopies++;
 }
 #endif /* NODE_H */

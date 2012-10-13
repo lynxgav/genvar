@@ -200,6 +200,35 @@ void InitialConditions(){
 	}
 }
 
+void remove_dead_strains(){
+	vector<CStrain *> newall;
+	vector<CStrain *>::iterator it=allstrains.begin();
+	for (; it != allstrains.end(); it++){
+		if(!(*it)->dead){
+			newall.push_back(*it);
+			}
+		else{
+			delete *it;
+			*it=NULL;
+			}
+	}
+	allstrains=newall;
+}
+
+void update_strains_NCopies(){
+	
+	vector<CStrain *>::iterator it=allstrains.begin();
+	for (; it != allstrains.end(); it++){
+		(*it)->NCopies=0;
+	}
+	for (unsigned int i=0; i < model.system_state.at(INF).size(); i++){
+		it=model.system_state.at(INF).at(i)->pathogens.begin();
+		for (; it != model.system_state.at(INF).at(i)->pathogens.end(); it++){
+			(*it)->NCopies++;
+		}
+	}
+}
+
 void Recovery(){
 
 	int j=0;
@@ -595,6 +624,14 @@ void Update(){
 	Recovery();
 	Migration();
 	Reproduction();
+
+	if(t%100==0) {
+		int nn=allstrains.size();
+		update_strains_NCopies();
+		top->delete_dead_branches();
+		remove_dead_strains();
+		}
+
 }
 
 void Iterate(){

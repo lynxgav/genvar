@@ -28,10 +28,11 @@ class CStrain{
 	
 	double WeightedSumI(double kapa(double), double distance=0, CStrain *original=NULL, CStrain *exclude=NULL);
 	void calSubMeanFitness(double &sumfitness, double &totaln);
+	bool delete_dead_branches();
+	void remove_dead_children();
 	double calSubN();
 	unsigned int NNeigh();
 	double sumNeighI();
-	void delete_dead_branches();
 	void print(ostream &out);
 	void print_node(ostream &out)const;
 	void print(ostream &out, double x, double y);
@@ -226,6 +227,34 @@ void CStrain::trim_links(){
        }
 }
 
+
+void CStrain::remove_dead_children(){
+	vector<CLink<CStrain> > newneighbours;
+	newneighbours.push_back(neighbours.at(0));
+
+	//delete children
+	std::vector<CLink<CStrain> >::iterator it=neighbours.begin();
+	for(it++; it!=neighbours.end(); it++){
+		if(!(*it).head->dead) 
+			newneighbours.push_back(*it);
+	}
+
+	neighbours=newneighbours;
+	if(neighbours.size()==1) is_leaf=true;
+	}
+
+bool CStrain::delete_dead_branches(){
+	std::vector<CLink<CStrain> >::iterator it=neighbours.begin();
+	for(it++; it!=neighbours.end(); it++){
+		(*it).head->dead=(*it).head->delete_dead_branches();
+	}
+	remove_dead_children();
+	if(neighbours.size()==1 and NCopies==0){
+		return true;
+		}
+	return false;
+
+}
 
 void CStrain::trim(){
 	if(is_leaf)return;
