@@ -195,7 +195,7 @@ void InitialConditions(){
 
 	for (unsigned int i=0; i < model.system_state.at(INF).size(); i++){
 		for(int j=0; j < Nd; j++){
-			model.system_state.at(INF).at(i)->infect(top);
+			model.system_state.at(INF).at(i)->add_pathogen(top);
 		}
 	}
 }
@@ -295,7 +295,7 @@ void MigrationGF(){
 
 		for(itt=p_node->migrants.begin(); itt != p_node->migrants.end(); itt++){
 			int chosen=unif2(eng);
-			model.system_state.at(SUS).at(chosen-1)->infect(itt->second);
+			model.system_state.at(SUS).at(chosen-1)->add_pathogen(itt->second);
 		}
 		p_node->migrants.clear();
 	}
@@ -339,7 +339,7 @@ void MigrationGFwR(){
 
 		for(unsigned int k=0; k < p_node->migrantsV.size(); k++){
 			int chosen=unif2(eng);
-			model.system_state.at(SUS).at(chosen-1)->infect(p_node->migrantsV.at(k));
+			model.system_state.at(SUS).at(chosen-1)->add_pathogen(p_node->migrantsV.at(k));
 		}
 		p_node->migrantsV.clear();
 	}
@@ -400,7 +400,7 @@ void MigrationGnF(){
 					}
 				}
 			}
-			(*it)->infect(itt->second);
+			(*it)->add_pathogen(itt->second);
 		}
 		p_node->migrants.clear();
 	}
@@ -451,7 +451,7 @@ void MigrationGnFwR(){
 					}
 				}
 			}
-			(*it)->infect(p_node->migrantsV.at(k));
+			(*it)->add_pathogen(p_node->migrantsV.at(k));
 		}
 		p_node->migrantsV.clear();
 	}
@@ -486,7 +486,7 @@ void MigrationDF(){
 				if(l==SUS) {assert ( model.system_state.at(SUS).at(j) != p_node );}
 				if (l==INF && model.system_state.at(INF).at(j) == p_node ){continue;}
 				for(unsigned int k=0; k < p_node->migrantsV.size(); k++){
-					model.system_state.at(l).at(j)->infect(p_node->migrantsV.at(k));
+					model.system_state.at(l).at(j)->add_pathogen(p_node->migrantsV.at(k));
 				}
 			}
 		}	
@@ -522,7 +522,7 @@ void MigrationDnF(){
 		for(it=p_node->neighbours.begin(); it!=p_node->neighbours.end(); it++){
 			if( (*it)->state == SUS || (*it)->state == INF ){
 				for(unsigned int j=0; j < p_node->migrantsV.size(); j++){
-					(*it)->infect( p_node->migrantsV.at(j) );
+					(*it)->add_pathogen( p_node->migrantsV.at(j) );
 				}
 			}
 		}	

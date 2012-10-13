@@ -22,7 +22,7 @@ class CNode
 	void print_neighbours(ostream &out);
 	void clear_neighbourhood();
 	int count_neighbours_state(int s);
-	void infect(CStrain *s);
+	void add_pathogen(CStrain *s);
 	int ID;
 	unsigned int degree;
 	int index;
@@ -82,7 +82,7 @@ int CNode::count_neighbours_state(int s){
 }
 
 
-void CNode::infect(CStrain *s){
+void CNode::add_pathogen(CStrain *s){
 	pathogens.push_back(s);
 	s->NCopies++;
 }
