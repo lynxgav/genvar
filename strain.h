@@ -31,6 +31,7 @@ class CStrain{
 	double calSubN();
 	unsigned int NNeigh();
 	double sumNeighI();
+	void delete_dead_branches();
 	void print(ostream &out);
 	void print_node(ostream &out)const;
 	void print(ostream &out, double x, double y);
@@ -45,6 +46,7 @@ class CStrain{
 	bool is_leaf, dead;
 	int ID;
 	unsigned int visited;
+	int NCopies;
 	float x,y;
 	float color;
 	//double I, dI,dII, dSS, S, dS;
@@ -68,6 +70,7 @@ unsigned int CStrain::NNeigh(){
 //Constructor take an int for ID and the point of the
 //father node
 CStrain::CStrain(int i, CStrain *f, double im_d){
+	NCopies=0;
 	gen=0;
 	visited=-1;
 	print_width = base_print_width;
@@ -241,7 +244,6 @@ void CStrain::trim(){
 	}
 
 }
-
 /*
 double CStrain::sumNeighI(){
 	std::vector<CLink<CStrain> >::iterator it;
