@@ -229,6 +229,7 @@ void CStrain::trim_links(){
 
 
 void CStrain::remove_dead_children(){
+	if( neighbours.size()==1) return;
 	vector<CLink<CStrain> > newneighbours;
 	newneighbours.push_back(neighbours.at(0));
 
@@ -241,7 +242,9 @@ void CStrain::remove_dead_children(){
 
 	neighbours=newneighbours;
 	if(neighbours.size()==1) is_leaf=true;
-	}
+
+	return;
+}
 
 bool CStrain::delete_dead_branches(){
 	std::vector<CLink<CStrain> >::iterator it=neighbours.begin();

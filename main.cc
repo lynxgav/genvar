@@ -16,11 +16,12 @@ int stotal;
 vector<CStrain*> allstrains;
 vector<CStrain*> strains;
 CStrain *top=NULL;
-int Nd = 5;
-double rec_rate = 0.05;
+int Nd = 10;
+double rec_rate = 0.01;
+double birth_rate = 0.005;
 double r0;
 int pop=1000;
-double avconnect=4;//pop-1;//4.;
+double avconnect=pop-1;//pop-1;//4.;
 double mig_rate;// = r0*rec_rate/(double)(Nd*avconnect);
 double mutat_rate = 0.0004;
 int nt=50;
@@ -29,16 +30,20 @@ int t=1;
 int tmax=1000000;
 int tstep=1;
 int tprint=100;
+int transient=2000;
 //time
-bool fullymixed=false;
-bool versionD=false;
+bool fullymixed=true;
+bool versionD=true;
 bool withreplacement=false;
+bool correct=true;
+
+CStrain* mutant=NULL;
 
 // change avconnect, CNetwork and poisson if fullymixed=true;
 
 //CNetwork *contacts=new CRRGraph(5000, 4);
-CNetwork *contacts=new CLattice(32, 32);
-//CNetwork *contacts=new CFullymixed(pop);
+//CNetwork *contacts=new CLattice(32, 32);
+CNetwork *contacts=new CFullymixed(pop);
 CModel model(contacts);
 
 unsigned int iteration=0;
@@ -239,15 +244,47 @@ void Recovery(){
 
 	for (unsigned int i=0; i < infectives.size(); i++){
 		if( unif(eng) < rec_rate ){
-			inf--; sus++;
+			inf--; rec++;
 			j++;
 			CNode* p_node=infectives.at(i);
-			model.UpdateSystemState( p_node, INF, SUS);
+			model.UpdateSystemState( p_node, INF, REC);
 			p_node->pathogens.clear();
 		}
 	}
 	
 	//cerr << "number of recoveries  " << j << endl;
+}
+
+void BirthDeath(){
+
+	vector<CNode*> infectives;
+
+	infectives=model.system_state.at(INF);
+
+	for (unsigned int i=0; i < infectives.size(); i++){
+		if( unif(eng) < birth_rate ){
+			inf--; sus++;
+			CNode* p_node=infectives.at(i);
+			model.UpdateSystemState( p_node, INF, SUS);
+			p_node->pathogens.clear();
+		}
+	}
+
+	vector<CNode*> recovereds;
+
+	recovereds=model.system_state.at(REC);
+
+	for (unsigned int i=0; i < recovereds.size(); i++){
+		if( unif(eng) < birth_rate ){
+			rec--; sus++;
+			CNode* p_node=recovereds.at(i);
+			model.UpdateSystemState( p_node, REC, SUS);
+
+			assert( p_node->pathogens.size()==0);
+			p_node->pathogens.clear();
+		}
+	}
+	
 }
 
 void UpdateSus(){
@@ -486,6 +523,51 @@ void MigrationGnFwR(){
 	}
 }
 
+void MigrationCorrectF(){
+	// correct version
+
+	unsigned int nrecipients=model.system_state.at(SUS).size();
+
+	if(nrecipients==0) { return;}
+
+	for (unsigned int i=0; i < model.system_state.at(INF).size(); i++){
+		CNode* p_node=model.system_state.at(INF).at(i);
+		assert( p_node->pathogens.size()==(unsigned int) Nd);
+		for(unsigned int k=0; k < p_node->pathogens.size(); k++){
+			for(unsigned int j=0; j < nrecipients; j++){
+				assert ( model.system_state.at(SUS).at(j) != p_node );
+				if( unif(eng) < mig_rate ){
+					model.system_state.at(SUS).at(j)->add_pathogen(p_node->pathogens.at(k));
+				}
+			}
+		}
+	}
+}
+
+void MigrationCorrectnF(){
+	// correct version
+
+	for (unsigned int i=0; i < model.system_state.at(INF).size(); i++){
+		CNode* p_node=model.system_state.at(INF).at(i);
+		assert( p_node->pathogens.size()==(unsigned int) Nd);
+
+		unsigned int nrecipients=p_node->count_neighbours_state(SUS);
+		if(nrecipients==0) { continue;}
+
+		for(unsigned int k=0; k < p_node->pathogens.size(); k++){
+
+			list<CNode*>::iterator it;
+			for(it=p_node->neighbours.begin(); it!=p_node->neighbours.end(); it++){
+				if( (*it)->state == SUS){
+					if( unif(eng) < mig_rate ){
+						(*it)->add_pathogen(p_node->pathogens.at(k));
+					}
+				}
+			}
+		}
+	}
+}
+
 void MigrationDF(){
 
 	// Diana's version
@@ -560,6 +642,16 @@ void MigrationDnF(){
 }
 
 void Migration(){
+
+	if(correct){
+		if(fullymixed){
+			MigrationCorrectF();
+		}
+		else{
+			MigrationCorrectnF();
+		}
+	}
+	else{
 	if(versionD){
 		if(fullymixed){
 			MigrationDF();
@@ -585,6 +677,7 @@ void Migration(){
 				MigrationGnF();
 			}
 		}
+	}
 	}
 	UpdateSus();
 }
@@ -620,17 +713,38 @@ void Reproduction(){
 
 }
 
+void IntroduceMutant(){
+
+	std::tr1::uniform_int<int> unif4(0,model.system_state.at(INF).size()-1);
+	std::tr1::uniform_int<int> unif5(0,Nd-1);
+
+	int chosen=unif4(eng);
+	CNode* p_node=model.system_state.at(INF).at(chosen);
+	chosen=unif5(eng);
+	mutant=p_node->pathogens.at(chosen);
+	
+}
+
 void Update(){
 	Recovery();
+	BirthDeath();
 	Migration();
 	Reproduction();
 
-	if(t%100==0) {
-		int nn=allstrains.size();
-		update_strains_NCopies();
+	update_strains_NCopies();
+
+	//if(mutant->NCopies == 0) {cerr<< "lost";}
+	//if(mutant->NCopies == (Nd*inf) ) {cerr<< "fixation";}
+
+	if(t%tprint==0) {
+		//update_strains_NCopies();
 		top->delete_dead_branches();
 		remove_dead_strains();
-		}
+	}
+
+	if(t==transient) { 
+		IntroduceMutant();
+	}
 
 }
 
