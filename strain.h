@@ -30,7 +30,7 @@ class CStrain{
 	void calSubMeanFitness(double &sumfitness, double &totaln);
 	bool delete_dead_branches();
 	void remove_dead_children();
-	double calSubN();
+	int subtotal_ncopies();
 	unsigned int NNeigh();
 	double sumNeighI();
 	void print(ostream &out);
@@ -407,4 +407,13 @@ double CStrain::cal_print_widths(){
 	return print_width;
 }
 
+
+int CStrain::subtotal_ncopies(){
+	int subn=NCopies;
+
+	for(size_t i=1; i<links.size(); i++){
+		subn+=links.at(i).head->NCopies;
+	}
+	return subn;
+}
 #endif
