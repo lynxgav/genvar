@@ -412,7 +412,7 @@ int CStrain::subtotal_ncopies(){
 	int subn=NCopies;
 
 	for(size_t i=1; i<links.size(); i++){
-		subn+=links.at(i).head->NCopies;
+		subn+=links.at(i).head->subtotal_ncopies();
 	}
 	return subn;
 }
