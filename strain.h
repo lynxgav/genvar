@@ -73,6 +73,7 @@ unsigned int CStrain::NNeigh(){
 //father node
 CStrain::CStrain(int i, CStrain *f, double im_d){
 	NCopies=0;
+	max_f=0.;
 	gen=0;
 	visited=-1;
 	print_width = base_print_width;
