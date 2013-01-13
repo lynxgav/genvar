@@ -411,8 +411,8 @@ double CStrain::cal_print_widths(){
 int CStrain::subtotal_ncopies(){
 	int subn=NCopies;
 
-	for(size_t i=1; i<links.size(); i++){
-		subn+=links.at(i).head->subtotal_ncopies();
+	for(size_t i=1; i<neighbours.size(); i++){
+		subn+=neighbours.at(i).head->subtotal_ncopies();
 	}
 	return subn;
 }
