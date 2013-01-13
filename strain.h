@@ -48,6 +48,7 @@ class CStrain{
 	int ID;
 	unsigned int visited;
 	int NCopies;
+	double max_f;
 	float x,y;
 	float color;
 	//double I, dI,dII, dSS, S, dS;
@@ -414,6 +415,9 @@ int CStrain::subtotal_ncopies(){
 	for(size_t i=1; i<neighbours.size(); i++){
 		subn+=neighbours.at(i).head->subtotal_ncopies();
 	}
+	
+	double f=(double)NCopies/(double)subn;
+	if(f > max_f ) max_f=f;
 	return subn;
 }
 #endif
