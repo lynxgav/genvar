@@ -17,25 +17,31 @@ vector<CStrain*> allstrains;
 vector<CStrain*> strains;
 CStrain *top=NULL;
 int Nd = 10;
-double rec_rate = 0.01;
-double birth_rate = 0.005;
+double rec_rate = 0.1;
+double birth_rate = 0.01;
+double wan_rate = 0.2;
+double disease_death_rate = 0.12;
 double r0;
-int pop=1000;
-double avconnect=pop-1;//pop-1;//4.;
+int pop=5000;
+double avconnect=pop-1;//4.;
 double mig_rate;// = r0*rec_rate/(double)(Nd*avconnect);
+double mig_rate_mutant;
 double mutat_rate = 0.0004;
 int nt=50;
 int nd=5;
 int t=1;
 int tmax=1000000;
 int tstep=1;
-int tprint=100;
+int tprint=10;
 int transient=2000;
 //time
 bool fullymixed=true;
 bool versionD=true;
 bool withreplacement=false;
 bool correct=true;
+bool SIR=true;
+bool SIRS=false;
+bool SI=false;
 
 CStrain* mutant=NULL;
 
@@ -193,6 +199,8 @@ void InitialConditions(){
 
 	mig_rate = r0*rec_rate/(double)(Nd*avconnect);
 
+	mig_rate_mutant = (0.5+1.)*r0*rec_rate/(double)(Nd*avconnect);
+
 	stotal=0;
 	top = new CStrain(stotal,NULL);
 	allstrains.push_back(top);
@@ -221,17 +229,25 @@ void remove_dead_strains(){
 }
 
 void update_strains_NCopies(){
-	
+
 	vector<CStrain *>::iterator it=allstrains.begin();
 	for (; it != allstrains.end(); it++){
 		(*it)->NCopies=0;
 	}
+
 	for (unsigned int i=0; i < model.system_state.at(INF).size(); i++){
 		it=model.system_state.at(INF).at(i)->pathogens.begin();
 		for (; it != model.system_state.at(INF).at(i)->pathogens.end(); it++){
 			(*it)->NCopies++;
 		}
 	}
+
+	int tot=0;
+	
+	for (it=allstrains.begin(); it != allstrains.end(); it++){
+		tot+=(*it)->NCopies;
+	}
+	//cerr<<tot-(inf*Nd)<<endl;
 }
 
 void Recovery(){
@@ -285,6 +301,42 @@ void BirthDeath(){
 		}
 	}
 	
+}
+
+void BirthDiseaseDeath(){
+	
+	vector<CNode*> infectives;
+
+	infectives=model.system_state.at(INF);
+
+	for (unsigned int i=0; i < infectives.size(); i++){
+		if( unif(eng) < disease_death_rate ){
+			inf--; sus++;
+			CNode* p_node=infectives.at(i);
+			model.UpdateSystemState( p_node, INF, SUS);
+			p_node->pathogens.clear();
+		}
+	}
+
+}
+
+void ImmunityLoss(){
+
+	vector<CNode*> recovereds;
+
+	recovereds=model.system_state.at(REC);
+
+	for (unsigned int i=0; i < recovereds.size(); i++){
+		if( unif(eng) < wan_rate ){
+			rec--; sus++;
+			CNode* p_node=recovereds.at(i);
+			model.UpdateSystemState( p_node, REC, SUS);
+
+			assert( p_node->pathogens.size()==0);
+			p_node->pathogens.clear();
+		}
+	}
+
 }
 
 void UpdateSus(){
@@ -536,8 +588,16 @@ void MigrationCorrectF(){
 		for(unsigned int k=0; k < p_node->pathogens.size(); k++){
 			for(unsigned int j=0; j < nrecipients; j++){
 				assert ( model.system_state.at(SUS).at(j) != p_node );
-				if( unif(eng) < mig_rate ){
-					model.system_state.at(SUS).at(j)->add_pathogen(p_node->pathogens.at(k));
+
+				if(p_node->pathogens.at(k)!=mutant){
+					if( unif(eng) < mig_rate ){
+						model.system_state.at(SUS).at(j)->add_pathogen(p_node->pathogens.at(k));
+					}
+				}
+				else{
+					if( unif(eng) < mig_rate_mutant ){
+						model.system_state.at(SUS).at(j)->add_pathogen(p_node->pathogens.at(k));
+					}	
 				}
 			}
 		}
@@ -559,8 +619,15 @@ void MigrationCorrectnF(){
 			list<CNode*>::iterator it;
 			for(it=p_node->neighbours.begin(); it!=p_node->neighbours.end(); it++){
 				if( (*it)->state == SUS){
-					if( unif(eng) < mig_rate ){
-						(*it)->add_pathogen(p_node->pathogens.at(k));
+					if(p_node->pathogens.at(k)!=mutant){
+						if( unif(eng) < mig_rate ){
+							(*it)->add_pathogen(p_node->pathogens.at(k));
+						}
+					}
+					else{
+						if( unif(eng) < mig_rate_mutant ){
+							(*it)->add_pathogen(p_node->pathogens.at(k));
+						}	
 					}
 				}
 			}
@@ -721,20 +788,71 @@ void IntroduceMutant(){
 	int chosen=unif4(eng);
 	CNode* p_node=model.system_state.at(INF).at(chosen);
 	chosen=unif5(eng);
-	mutant=p_node->pathogens.at(chosen);
-	
+	//mutant=p_node->pathogens.at(chosen);
+
+	CStrain *s = new CStrain(stotal, p_node->pathogens.at(chosen) );
+	stotal++;
+	allstrains.push_back(s);
+	mutant=s;
+
+	p_node->pathogens.clear();
+
+	for(int j=0; j < Nd; j++){
+		p_node->add_pathogen(mutant);
+	}
+
+}
+
+void PrintToFile(){
+
+	double GDLAverage=GeneticDiversityLocalAverage();
+	CDiversityOut GDGlobal=GeneticDiversityGlobal();
+
+	cout<< t <<"\t"<< sus/(double)model.network->get_N() <<"\t"<< inf/(double)model.network->get_N() <<"\t"<< rec/(double)model.network->get_N() <<"\t"<< GDGlobal.distance <<"\t"<< GDLAverage  <<"\t"<< GDGlobal.SegSites<<"\t"<< allstrains.size();
+
+	if(mutant!=NULL) cout<<"\t"<< mutant->NCopies/(double)(Nd*inf);
+
+	cout<< endl;
+
 }
 
 void Update(){
-	Recovery();
-	BirthDeath();
-	Migration();
-	Reproduction();
+
+	if (SIR){ // childhood diseases
+		Recovery();
+		BirthDeath();
+		Migration();
+		Reproduction();
+	}
+	else{
+		if (SIRS){ // influenza
+			Recovery();
+			BirthDeath();
+			ImmunityLoss();
+			Migration();
+			Reproduction();
+		}
+		else{ // HIV
+			if (SI) {
+				BirthDiseaseDeath();
+				Migration();
+				Reproduction();
+			}
+		}
+	}
 
 	update_strains_NCopies();
 
-	//if(mutant->NCopies == 0) {cerr<< "lost";}
-	//if(mutant->NCopies == (Nd*inf) ) {cerr<< "fixation";}
+	if(mutant!=NULL && mutant->NCopies == 0) {
+		PrintToFile();
+		cerr<< "lost"<<endl; 
+		exit(0);
+	}
+	if(mutant!=NULL && mutant->NCopies == (Nd*inf) ) {
+		PrintToFile();
+		cerr<< "fixation"<<endl; 
+		exit(0);
+	}
 
 	if(t%tprint==0) {
 		//update_strains_NCopies();
@@ -742,7 +860,7 @@ void Update(){
 		remove_dead_strains();
 	}
 
-	if(t==transient) { 
+	if(t==(tmax+1)) { 
 		IntroduceMutant();
 	}
 
@@ -751,9 +869,7 @@ void Update(){
 void Iterate(){
 	while(t<=tmax and inf>0 and sus>=0 and rec>=0){
 		if(t%tprint==0){
-			double GDLAverage=GeneticDiversityLocalAverage();
-			CDiversityOut GDGlobal=GeneticDiversityGlobal();
-			cout<< t <<"\t"<< sus/(double)model.network->get_N() <<"\t"<< inf/(double)model.network->get_N() <<"\t"<< rec/(double)model.network->get_N() <<"\t"<< GDGlobal.distance <<"\t"<< GDLAverage  <<"\t"<< GDGlobal.SegSites<<"\t"<< allstrains.size()<< endl;
+			PrintToFile();
 		}
 	
 		Update();
