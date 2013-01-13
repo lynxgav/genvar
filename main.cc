@@ -247,7 +247,7 @@ void update_strains_NCopies(){
 	for (it=allstrains.begin(); it != allstrains.end(); it++){
 		tot+=(*it)->NCopies;
 	}
-	//cerr<<tot-(inf*Nd)<<endl;
+	cerr<<tot-(inf*Nd)<< "\t"<< top->subtotal_ncopies() - (inf*Nd)<<endl;
 }
 
 void Recovery(){
