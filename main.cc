@@ -16,13 +16,13 @@ int stotal;
 vector<CStrain*> allstrains;
 vector<CStrain*> strains;
 CStrain *top=NULL;
-int Nd = 10;
+int Nd = 5;
 double rec_rate = 0.1;
 double birth_rate = 0.01;
 double wan_rate = 0.2;
 double disease_death_rate = 0.12;
 double r0;
-int pop=5000;
+int pop=1000;
 double avconnect=pop-1;//4.;
 double mig_rate;// = r0*rec_rate/(double)(Nd*avconnect);
 double mig_rate_mutant;
@@ -32,7 +32,7 @@ int nd=5;
 int t=1;
 int tmax=1000000;
 int tstep=1;
-int tprint=10;
+int tprint=100;
 int transient=2000;
 //time
 bool fullymixed=true;
@@ -42,6 +42,8 @@ bool correct=true;
 bool SIR=true;
 bool SIRS=false;
 bool SI=false;
+
+ofstream outorigfixtimes("OrigFixTimes");
 
 CStrain* mutant=NULL;
 
@@ -206,48 +208,13 @@ void InitialConditions(){
 	allstrains.push_back(top);
 	stotal++;
 
+	top->t_origination=t;
+
 	for (unsigned int i=0; i < model.system_state.at(INF).size(); i++){
 		for(int j=0; j < Nd; j++){
 			model.system_state.at(INF).at(i)->add_pathogen(top);
 		}
 	}
-}
-
-void remove_dead_strains(){
-	vector<CStrain *> newall;
-	vector<CStrain *>::iterator it=allstrains.begin();
-	for (; it != allstrains.end(); it++){
-		if(!(*it)->dead){
-			newall.push_back(*it);
-			}
-		else{
-			delete *it;
-			*it=NULL;
-			}
-	}
-	allstrains=newall;
-}
-
-void update_strains_NCopies(){
-
-	vector<CStrain *>::iterator it=allstrains.begin();
-	for (; it != allstrains.end(); it++){
-		(*it)->NCopies=0;
-	}
-
-	for (unsigned int i=0; i < model.system_state.at(INF).size(); i++){
-		it=model.system_state.at(INF).at(i)->pathogens.begin();
-		for (; it != model.system_state.at(INF).at(i)->pathogens.end(); it++){
-			(*it)->NCopies++;
-		}
-	}
-
-	int tot=0;
-	
-	for (it=allstrains.begin(); it != allstrains.end(); it++){
-		tot+=(*it)->NCopies;
-	}
-	//cerr<<tot-(inf*Nd)<< "\t"<< top->subtotal_ncopies() - (inf*Nd)<<endl;
 }
 
 void Recovery(){
@@ -767,6 +734,7 @@ void Reproduction(){
 				stotal++;
 				allstrains.push_back(s2);
 				s=s2;
+				s->t_origination=t;
 			}
 			newgeneration.push_back(s);
 		}
@@ -795,6 +763,8 @@ void IntroduceMutant(){
 	allstrains.push_back(s);
 	mutant=s;
 
+	mutant->t_origination=t;
+
 	p_node->pathogens.clear();
 
 	for(int j=0; j < Nd; j++){
@@ -814,6 +784,53 @@ void PrintToFile(){
 
 	cout<< endl;
 
+}
+
+void remove_dead_strains(){
+	vector<CStrain *> newall;
+	vector<CStrain *>::iterator it=allstrains.begin();
+	for (; it != allstrains.end(); it++){
+		if(!(*it)->dead){
+			newall.push_back(*it);
+			}
+		else{
+			delete *it;
+			*it=NULL;
+			}
+	}
+	allstrains=newall;
+}
+
+void update_strains_NCopies(){
+
+	vector<CStrain *>::iterator it=allstrains.begin();
+	for (; it != allstrains.end(); it++){
+		(*it)->NCopies=0;
+	}
+
+	for (unsigned int i=0; i < model.system_state.at(INF).size(); i++){
+		it=model.system_state.at(INF).at(i)->pathogens.begin();
+		for (; it != model.system_state.at(INF).at(i)->pathogens.end(); it++){
+			(*it)->NCopies++;
+		}
+	}
+	/*
+	int tot=0;
+
+	for (it=allstrains.begin(); it != allstrains.end(); it++){
+		tot+=(*it)->NCopies;
+	}
+	*/
+	top->subtotal_ncopies( inf*Nd, t );
+
+	for (it=allstrains.begin(); it != allstrains.end(); it++){
+		if((*it)->notprinted && !((*it)->notfixed)){
+			(*it)->notprinted=false;
+			outorigfixtimes<< (*it)->t_origination << "\t" << (*it)->t_fixation<<endl;
+		}
+	}
+
+	//cerr<<tot-(inf*Nd)<< "\t"<< top->subtotal_ncopies() - (inf*Nd)<<endl;
 }
 
 void Update(){
@@ -841,7 +858,7 @@ void Update(){
 		}
 	}
 
-	update_strains_NCopies();
+	//update_strains_NCopies();
 
 	if(mutant!=NULL && mutant->NCopies == 0) {
 		PrintToFile();
@@ -855,7 +872,7 @@ void Update(){
 	}
 
 	if(t%tprint==0) {
-		//update_strains_NCopies();
+		update_strains_NCopies();
 		top->delete_dead_branches();
 		remove_dead_strains();
 	}

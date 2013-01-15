@@ -30,7 +30,7 @@ class CStrain{
 	void calSubMeanFitness(double &sumfitness, double &totaln);
 	bool delete_dead_branches();
 	void remove_dead_children();
-	int subtotal_ncopies(int tot);
+	int subtotal_ncopies(int tot, int cur_time);
 	unsigned int NNeigh();
 	double sumNeighI();
 	void print(ostream &out);
@@ -44,6 +44,10 @@ class CStrain{
 	std::vector<CLink<CStrain> > links;
 	COffset offset;
 	double print_width;
+	int t_origination;
+	int t_fixation;
+	bool notfixed;
+	bool notprinted;
 	bool is_leaf, dead;
 	int ID;
 	unsigned int visited;
@@ -74,6 +78,10 @@ unsigned int CStrain::NNeigh(){
 CStrain::CStrain(int i, CStrain *f, double im_d){
 	NCopies=0;
 	max_f=0.;
+	t_origination=-1;
+	t_fixation=-1;
+	notfixed=true;
+	notprinted=true;
 	gen=0;
 	visited=-1;
 	print_width = base_print_width;
@@ -410,15 +418,23 @@ double CStrain::cal_print_widths(){
 }
 
 
-int CStrain::subtotal_ncopies(int tot){
+int CStrain::subtotal_ncopies(int tot, int cur_time){
 	int subn=NCopies;
 
 	for(size_t i=1; i<neighbours.size(); i++){
-		subn+=neighbours.at(i).head->subtotal_ncopies();
+		subn+=neighbours.at(i).head->subtotal_ncopies(tot,cur_time);
 	}
 	
 	double f=(double)subn/(double)tot;
-	if(f > max_f ) max_f=f;
+
+	if(subn==tot && notfixed){ 
+		notfixed=false;
+		max_f=f;
+		t_fixation=cur_time;
+		//cerr<< "fixed " << t_fixation<<endl;	
+	}
+
+	if(notfixed){ if(f > max_f ) {max_f=f;}}
 	return subn;
 }
 #endif
