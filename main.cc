@@ -967,7 +967,7 @@ return 0;
 
 }
 
-// ssh -v theoserv.phy.umist.ac.uk -l rozhnova
+//ssh -v theoserv.phy.umist.ac.uk -l rozhnova
 //1ynxg4v
 //ssh -v thpc55
 //git push origin master
