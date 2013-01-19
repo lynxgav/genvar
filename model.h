@@ -41,16 +41,23 @@ int Nd=1;
 int nd=1;
 int nt=2;
 
-int pop=1000000;
+int pop=1000;
 double avconnect=pop-1;//4.;
 
-double mutat_rate = 9./100000.;
+double mutat_rate = 2.5/100000.;
 
+double disease_death_rate = 2.*(1./(10.*365.)+1./(50.*365.));
 double rec_rate = 1./13.;
 double birth_rate = 1./(50.*365.);
-double r0 = 17.;
-double mig_rate = r0*(rec_rate+birth_rate)/(double)(Nd*avconnect);// = r0*rec_rate/(double)(Nd*avconnect);
-double mig_rate_mutant = r0*(rec_rate+birth_rate)/(double)(Nd*avconnect);
+double r0 = 2.4;
+
+//SI HIV
+double mig_rate = r0*disease_death_rate/(double)(Nd*avconnect);
+double mig_rate_mutant = r0*disease_death_rate/(double)(Nd*avconnect);
+
+//SIR childhood diseases
+//double mig_rate = r0*(rec_rate+birth_rate)/(double)(Nd*avconnect);// = r0*rec_rate/(double)(Nd*avconnect);
+//double mig_rate_mutant = r0*(rec_rate+birth_rate)/(double)(Nd*avconnect);
 
 void CModel::Initial_Conditions(){
 
@@ -68,10 +75,14 @@ void CModel::Initial_Conditions(){
 	//rec=network->get_N()-inf-sus;
 
 	//SIR childhood diseases
+	//inf=(int)(network->get_N()*birth_rate*(r0-1.)/(r0*(birth_rate+rec_rate)));
+	//sus=(int)((double)network->get_N()/r0);
+	//rec=network->get_N()-inf-sus;
 
-	inf=(int)(network->get_N()*birth_rate*(r0-1.)/(r0*(birth_rate+rec_rate)));
-	sus=(int)((double)network->get_N()/r0);
-	rec=network->get_N()-inf-sus;
+	//SI HIV
+	rec=0;
+	inf=(int)(network->get_N()*(r0-1.)/r0);
+	sus=network->get_N()-inf-rec;
 
 	ERROR(rec<0, "The sum of infected and susceptibles is larger than total.");
 
@@ -112,9 +123,14 @@ void CModel::Initial_Conditions(){
 	//rec=network->get_N()-inf-sus;
 
 	//SIR
-	inf=(int)(network->get_N()*birth_rate*(r0-1.)/(r0*(birth_rate+rec_rate)));
-	sus=(int)((double)network->get_N()/r0);
-	rec=network->get_N()-inf-sus;
+	//inf=(int)(network->get_N()*birth_rate*(r0-1.)/(r0*(birth_rate+rec_rate)));
+	//sus=(int)((double)network->get_N()/r0);
+	//rec=network->get_N()-inf-sus;
+
+	//SI HIV
+	rec=0;
+	inf=(int)(network->get_N()*(r0-1.)/r0);
+	sus=network->get_N()-inf-rec;
 
 	//cerr<< sus << "\t" << inf << "\t" << rec << endl;
 }

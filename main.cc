@@ -8,7 +8,7 @@
 using namespace std;
 int seed=0;
 std::tr1::ranlux64_base_01 eng(seed);
-std::tr1::uniform_real<double> unif(0, 1);
+std::tr1::uniform_real<double> unif(0,1);
 
 //To to be used for assigning ID's
 int stotal;
@@ -18,7 +18,6 @@ vector<CStrain*> strains;
 CStrain *top=NULL;
 
 double wan_rate = 0.;
-double disease_death_rate = 0.;
 
 int t=1;
 int tmax=1000000;
@@ -31,9 +30,9 @@ bool withreplacement=false;
 
 bool fullymixed=true;
 bool correct=true;
-bool SIR=true;
+bool SIR=false;
 bool SIRS=false;
-bool SI=false;
+bool SI=true;
 
 bool DivLocFullSamp=true;
 bool DivGlobFullSamp=true;
