@@ -214,7 +214,7 @@ CDiversityOut GeneticDiversityLocalAverage(){
 
 	for (unsigned int i=0; i < model.system_state.at(INF).size(); i++){
 		dist+=GeneticDiversityLocal( model.system_state.at(INF).at(i) );
-		ss+=NSegSites(sample);
+		ss+=NSegSites( model.system_state.at(INF).at(i)->pathogens );
 	}
 
 	dist=dist/(double)model.system_state.at(INF).size();
