@@ -4,7 +4,7 @@ $(EXEC): main.cc *h
 	$(CC) -o $(EXEC)  main.cc $(LDFLAGS) $(DEBUGFLAGS)
 
 run:    $(EXEC) 
-	 ./$(EXEC) $(SEED) $(R0) > out
+	 ./$(EXEC) $(SEED) > out
 
 submit: $(EXEC) logscale
 	 bash submit.sh
