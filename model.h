@@ -30,13 +30,27 @@ class CModel
 	CNetwork *network;
 	int t, tstep, tmax;
 	double elapsed;
- 	private:
+	private:
 };
-
 
 int inf;
 int sus;
 int rec;
+
+int Nd=1;
+int nd=1;
+int nt=2;
+
+int pop=1000000;
+double avconnect=pop-1;//4.;
+
+double mutat_rate = 9./100000.;
+
+double rec_rate = 1./13.;
+double birth_rate = 1./(50.*365.);
+double r0 = 17.;
+double mig_rate = r0*(rec_rate+birth_rate)/(double)(Nd*avconnect);// = r0*rec_rate/(double)(Nd*avconnect);
+double mig_rate_mutant = r0*(rec_rate+birth_rate)/(double)(Nd*avconnect);
 
 void CModel::Initial_Conditions(){
 
@@ -47,8 +61,16 @@ void CModel::Initial_Conditions(){
 
 	nstates=3;
 
-	inf=network->get_N();
-	sus=0;
+	// generic all infected
+
+	//inf=network->get_N();
+	//sus=0;
+	//rec=network->get_N()-inf-sus;
+
+	//SIR childhood diseases
+
+	inf=(int)(network->get_N()*birth_rate*(r0-1.)/(r0*(birth_rate+rec_rate)));
+	sus=(int)((double)network->get_N()/r0);
 	rec=network->get_N()-inf-sus;
 
 	ERROR(rec<0, "The sum of infected and susceptibles is larger than total.");
@@ -84,8 +106,14 @@ void CModel::Initial_Conditions(){
 
 	//cerr<< sus << "\t" << inf << "\t" << rec << endl;
 
-	inf=network->get_N();
-	sus=0;
+	//generic
+	//inf=network->get_N();
+	//sus=0;
+	//rec=network->get_N()-inf-sus;
+
+	//SIR
+	inf=(int)(network->get_N()*birth_rate*(r0-1.)/(r0*(birth_rate+rec_rate)));
+	sus=(int)((double)network->get_N()/r0);
 	rec=network->get_N()-inf-sus;
 
 	//cerr<< sus << "\t" << inf << "\t" << rec << endl;

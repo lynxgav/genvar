@@ -16,39 +16,38 @@ int stotal;
 vector<CStrain*> allstrains;
 vector<CStrain*> strains;
 CStrain *top=NULL;
-int Nd = 5;
-double rec_rate = 0.1;
-double birth_rate = 0.01;
-double wan_rate = 0.2;
-double disease_death_rate = 0.12;
-double r0;
-int pop=1000;
-double avconnect=pop-1;//4.;
-double mig_rate;// = r0*rec_rate/(double)(Nd*avconnect);
-double mig_rate_mutant;
-double mutat_rate = 0.0004;
-int nt=50;
-int nd=5;
+
+double wan_rate = 0.;
+double disease_death_rate = 0.;
+
 int t=1;
 int tmax=1000000;
 int tstep=1;
-int tprint=100;
+int tprint=5;
 int transient=2000;
-//time
-bool fullymixed=true;
+
 bool versionD=true;
 bool withreplacement=false;
+
+bool fullymixed=true;
 bool correct=true;
 bool SIR=true;
 bool SIRS=false;
 bool SI=false;
 
+bool DivLocFullSamp=true;
+bool DivGlobFullSamp=true;
+
 ofstream outorigfixtimes("OrigFixTimes");
+ofstream outsusinfrec("SusInfRec");
+ofstream outdiversity("Diversity");
+ofstream outmutant("Mutant");
+ofstream outallstrains("AllStrains");
+//ofstream outstrains("Strains");
 
 CStrain* mutant=NULL;
 
 // change avconnect, CNetwork and poisson if fullymixed=true;
-
 //CNetwork *contacts=new CRRGraph(5000, 4);
 //CNetwork *contacts=new CLattice(32, 32);
 CNetwork *contacts=new CFullymixed(pop);
@@ -115,9 +114,9 @@ int NSegSites(vector<CStrain*> &sample){
 
 class CDiversityOut{
 	public:
-	CDiversityOut(double d=0, int n=0):distance(d),SegSites(n){}
+	CDiversityOut(double d=0, double n=0):distance(d),SegSites(n){}
 	double distance;
-	int SegSites;
+	double SegSites;
  	private:
 };
 
@@ -125,30 +124,48 @@ CDiversityOut GeneticDiversityGlobal(){
 
 	vector<CStrain*> sample;
 
-	std::tr1::uniform_int<int> unif4(0,model.system_state.at(INF).size()-1);
-	std::tr1::uniform_int<int> unif5(0,Nd-1);
+	if(DivGlobFullSamp){
+		sample=strains;
+	}
+	else{	
+		std::tr1::uniform_int<int> unif4(0,model.system_state.at(INF).size()-1);
+		std::tr1::uniform_int<int> unif5(0,Nd-1);
 
-	for (int i=0; i<nt; i++){
-		int chosen=unif4(eng);
-		CNode* p_node=model.system_state.at(INF).at(chosen);
-		chosen=unif5(eng);
-		sample.push_back(p_node->pathogens.at(chosen));
+		for (int i=0; i<nt; i++){
+			int chosen=unif4(eng);
+			CNode* p_node=model.system_state.at(INF).at(chosen);
+			chosen=unif5(eng);
+			sample.push_back(p_node->pathogens.at(chosen));
+		}
 	}
 
-	int ss=NSegSites(sample);
+	double ss=NSegSites(sample);
 
 	double dist=0.;
 	int k=0;
 
-	for(int i=0; i<nt; i++){
-		for(int j=i+1; j<nt; j++){
-			k=distance( sample.at(i), sample.at(j) );
-			assert(k!=-1);
-			dist+=k;
+	if(DivGlobFullSamp){
+		for(unsigned int i=0; i<strains.size(); i++){
+			for(unsigned int j=i+1; j<strains.size(); j++){
+				k=distance( sample.at(i), sample.at(j) );
+				assert(k!=-1);
+				dist+=k*(sample.at(i)->NCopies)*(sample.at(j)->NCopies);
+			}
 		}
+	
+		dist=dist/(Nd*inf*(Nd*inf-1.)/2.);
 	}
+	else{
+		for(int i=0; i<nt; i++){
+			for(int j=i+1; j<nt; j++){
+				k=distance( sample.at(i), sample.at(j) );
+				assert(k!=-1);
+				dist+=k;
+			}
+		}
 
-	dist=dist/(nt*(nt-1.)/2.);
+		dist=dist/(nt*(nt-1.)/2.);
+	}
 
 	return CDiversityOut(dist, ss);
 }
@@ -156,14 +173,20 @@ CDiversityOut GeneticDiversityGlobal(){
 double GeneticDiversityLocal(CNode* p_node){
 
 	map<int,CStrain*> sample;
-
-	std::tr1::uniform_int<int> unif6(0,Nd-1);
-
 	assert(nd<=Nd);
 
-	while (sample.size()<(unsigned int) nd){
-		int chosen=unif6(eng);
-		sample[chosen]=p_node->pathogens.at(chosen);
+	if(DivLocFullSamp){
+		assert(nd==Nd);
+		for(int i=0; i<Nd; i++){
+			sample[i]=p_node->pathogens.at(i);
+		}
+	}
+	else{
+		std::tr1::uniform_int<int> unif6(0,Nd-1);
+		while (sample.size()<(unsigned int) nd){
+			int chosen=unif6(eng);
+			sample[chosen]=p_node->pathogens.at(chosen);
+		}
 	}
 	
 	double dist=0.;
@@ -184,28 +207,28 @@ double GeneticDiversityLocal(CNode* p_node){
 	return dist;
 }
 
-double GeneticDiversityLocalAverage(){
+CDiversityOut GeneticDiversityLocalAverage(){
 
 	double dist=0.;
+	double ss=0.;
 
 	for (unsigned int i=0; i < model.system_state.at(INF).size(); i++){
 		dist+=GeneticDiversityLocal( model.system_state.at(INF).at(i) );
+		ss+=NSegSites(sample);
 	}
 
 	dist=dist/(double)model.system_state.at(INF).size();
+	ss=(double)ss/(double)model.system_state.at(INF).size();
 
-	return dist;
+	return CDiversityOut(dist, ss);
 }
 
 void InitialConditions(){
 
-	mig_rate = r0*rec_rate/(double)(Nd*avconnect);
-
-	mig_rate_mutant = (0.5+1.)*r0*rec_rate/(double)(Nd*avconnect);
-
 	stotal=0;
 	top = new CStrain(stotal,NULL);
 	allstrains.push_back(top);
+	strains.push_back(top);
 	stotal++;
 
 	top->t_origination=t;
@@ -773,67 +796,7 @@ void IntroduceMutant(){
 
 }
 
-void PrintToFile(){
-
-	double GDLAverage=GeneticDiversityLocalAverage();
-	CDiversityOut GDGlobal=GeneticDiversityGlobal();
-
-	cout<< t <<"\t"<< sus/(double)model.network->get_N() <<"\t"<< inf/(double)model.network->get_N() <<"\t"<< rec/(double)model.network->get_N() <<"\t"<< GDGlobal.distance <<"\t"<< GDLAverage  <<"\t"<< GDGlobal.SegSites<<"\t"<< allstrains.size();
-
-	if(mutant!=NULL) cout<<"\t"<< mutant->NCopies/(double)(Nd*inf);
-
-	cout<< endl;
-
-}
-
-void remove_dead_strains(){
-	vector<CStrain *> newall;
-	vector<CStrain *>::iterator it=allstrains.begin();
-	for (; it != allstrains.end(); it++){
-		if(!(*it)->dead){
-			newall.push_back(*it);
-			}
-		else{
-			delete *it;
-			*it=NULL;
-			}
-	}
-	allstrains=newall;
-}
-
-void update_strains_NCopies(){
-
-	vector<CStrain *>::iterator it=allstrains.begin();
-	for (; it != allstrains.end(); it++){
-		(*it)->NCopies=0;
-	}
-
-	for (unsigned int i=0; i < model.system_state.at(INF).size(); i++){
-		it=model.system_state.at(INF).at(i)->pathogens.begin();
-		for (; it != model.system_state.at(INF).at(i)->pathogens.end(); it++){
-			(*it)->NCopies++;
-		}
-	}
-	/*
-	int tot=0;
-
-	for (it=allstrains.begin(); it != allstrains.end(); it++){
-		tot+=(*it)->NCopies;
-	}
-	*/
-	top->subtotal_ncopies( inf*Nd, t );
-
-	for (it=allstrains.begin(); it != allstrains.end(); it++){
-		if((*it)->notprinted && !((*it)->notfixed)){
-			(*it)->notprinted=false;
-			outorigfixtimes<< (*it)->t_origination << "\t" << (*it)->t_fixation<<endl;
-		}
-	}
-
-	//cerr<<tot-(inf*Nd)<< "\t"<< top->subtotal_ncopies() - (inf*Nd)<<endl;
-}
-
-void Update(){
+void UpdateDynamics(){
 
 	if (SIR){ // childhood diseases
 		Recovery();
@@ -858,38 +821,127 @@ void Update(){
 		}
 	}
 
-	//update_strains_NCopies();
+}
+
+void PrintSIR(){
+
+	outsusinfrec << t <<"\t"<< sus/(double)model.network->get_N() <<"\t"<< inf/(double)model.network->get_N() <<"\t"<< rec/(double)model.network->get_N() << endl;
+
+}
+
+void PrintAllStrains(){
+
+	outallstrains << t <<"\t"<< strains.size() <<"\t"<< allstrains.size() <<"\t"<< stotal << endl;
+}
+
+void PrintDiversity(){
+
+	CDiversityOut GDLAverage=GeneticDiversityLocalAverage();
+        CDiversityOut GDGlobal=GeneticDiversityGlobal();
+
+	outdiversity << t <<"\t"<< GDGlobal.distance <<"\t"<< GDGlobal.SegSites <<"\t"<< GDLAverage.distance <<"\t"<< GDLAverage.SegSites << endl;
+
+}
+
+void PrintMutant(){
 
 	if(mutant!=NULL && mutant->NCopies == 0) {
-		PrintToFile();
-		cerr<< "lost"<<endl; 
+		outmutant << t <<"\t"<< mutant->NCopies/(double)(Nd*inf) << endl;
+		cerr << "lost" << endl; 
 		exit(0);
 	}
 	if(mutant!=NULL && mutant->NCopies == (Nd*inf) ) {
-		PrintToFile();
+		outmutant << t <<"\t"<< mutant->NCopies/(double)(Nd*inf) << endl;
 		cerr<< "fixation"<<endl; 
 		exit(0);
 	}
 
-	if(t%tprint==0) {
-		update_strains_NCopies();
-		top->delete_dead_branches();
-		remove_dead_strains();
+	if(mutant!=NULL) outmutant << t <<"\t"<< mutant->NCopies/(double)(Nd*inf) << endl;
+}
+
+void UpdateStrainsNCopies(){
+
+	vector<CStrain *>::iterator it=allstrains.begin();
+	for (; it != allstrains.end(); it++){
+		(*it)->NCopies=0;
 	}
 
-	if(t==(tmax+1)) { 
-		IntroduceMutant();
+	for (unsigned int i=0; i < model.system_state.at(INF).size(); i++){
+		it=model.system_state.at(INF).at(i)->pathogens.begin();
+		for (; it != model.system_state.at(INF).at(i)->pathogens.end(); it++){
+			(*it)->NCopies++;
+		}
 	}
 
+	//PrintMutant();
+}
+
+void RemoveDeadStrains(){
+	vector<CStrain *> newall;
+	vector<CStrain *> newlive;
+	vector<CStrain *>::iterator it=allstrains.begin();
+	for (; it != allstrains.end(); it++){
+
+		if( (*it)->NCopies>0 ) {
+			newlive.push_back(*it);
+		}
+
+		if(!(*it)->dead){
+			newall.push_back(*it);
+			}
+		else{
+			delete *it;
+			*it=NULL;
+			}
+	}
+	allstrains=newall;
+	strains=newlive;
+}
+
+void PrintOriginationsFixations(){
+	
+	vector<CStrain *>::iterator it=allstrains.begin();
+
+	for (; it != allstrains.end(); it++){
+		if((*it)->notprinted && !((*it)->notfixed)){
+			(*it)->notprinted=false;
+			outorigfixtimes<< (*it)->t_origination <<"\t"<< (*it)->t_fixation <<"\t"<< (*it)->ID <<endl;
+		}
+	}
+	/*
+	int tot=0;
+
+	for (it=allstrains.begin(); it != allstrains.end(); it++){
+		tot+=(*it)->NCopies;
+	}
+	*/
+	//cerr<<tot-(inf*Nd)<< "\t"<< top->subtotal_ncopies() - (inf*Nd)<<endl;
+}
+
+void UpdateMemory(){
+
+	UpdateStrainsNCopies();
+	top->delete_dead_branches();
+	RemoveDeadStrains();
+	top->subtotal_ncopies( inf*Nd, t );
 }
 
 void Iterate(){
+
 	while(t<=tmax and inf>0 and sus>=0 and rec>=0){
-		if(t%tprint==0){
-			PrintToFile();
-		}
-	
-		Update();
+
+		UpdateMemory();
+
+		PrintSIR();
+		PrintAllStrains();
+		PrintDiversity();
+		PrintOriginationsFixations();
+		PrintMutant();
+
+		if(t%(tmax+1)==0) IntroduceMutant();
+
+		UpdateDynamics(); //Dynamics running
+
 		//cerr << network->average_degree() <<"\t"<< model.state_degree(SUS) <<"\t"<< model.state_degree(INF) <<"\t" << model.state_degree(REC) <<endl;
 		t+=tstep;
 		
@@ -902,7 +954,7 @@ void Iterate(){
 int main(int argc, char **argv){
 
 	if(argc>1)seed=atoi(argv[1]);
-	if(argc>2)r0=atof(argv[2]);
+	//if(argc>2)r0=atof(argv[2]);
 	eng.seed(seed);
 	//cerr<<seed<<endl;
 
@@ -914,3 +966,5 @@ int main(int argc, char **argv){
 return 0;
 
 }
+
+// ssh -v theoserv.phy.umist.ac.uk -l rozhnova
