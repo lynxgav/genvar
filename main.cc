@@ -246,8 +246,9 @@ void RecoveryBirthFromI(){
 	infectives=model.system_state.at(INF);
 
 	for (unsigned int i=0; i < infectives.size(); i++){
-		int rand_num = unif(eng);
+		double rand_num = unif(eng);
 		if( rand_num < rec_rate ){
+			//cerr << rand_num << endl;
 			inf--; rec++;
 			j++;
 			CNode* p_node=infectives.at(i);
@@ -257,14 +258,17 @@ void RecoveryBirthFromI(){
 		else {
 			if( rand_num < (rec_rate+birth_rate) ){
 				inf--; sus++;
+				j++;
 				CNode* p_node=infectives.at(i);
 				model.UpdateSystemState( p_node, INF, SUS);
 				p_node->pathogens.clear();
 			}
 		}
-	}
-	
-	//cerr << "number of recoveries  " << j << endl;
+	}	
+
+	//cerr << "number of RecoveryBirthFromI " << j << endl;
+	//cerr << "number of infectives " << inf << endl;
+	//cerr << "rec_rate+birth_rate " << rec_rate+birth_rate << endl; 
 }
 
 void BirthFromR(){
@@ -931,7 +935,7 @@ void Iterate(){
 		if(t%(tmax+1)==0) IntroduceMutant();
 
 		UpdateDynamics(); //Dynamics running
-
+		PrintSIR();
 		//cerr << network->average_degree() <<"\t"<< model.state_degree(SUS) <<"\t"<< model.state_degree(INF) <<"\t" << model.state_degree(REC) <<endl;
 		t+=tstep;
 		
