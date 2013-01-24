@@ -17,8 +17,6 @@ vector<CStrain*> allstrains;
 vector<CStrain*> strains;
 CStrain *top=NULL;
 
-double wan_rate = 0.;
-
 int t=1;
 int tmax=1000000;
 int tstep=1;
@@ -31,8 +29,8 @@ bool withreplacement=false;
 bool fullymixed=true;
 bool correct=true;
 bool SIR=false;
-bool SIRS=false;
-bool SI=true;
+bool SIRS=true;
+bool SI=false;
 
 bool DivLocFullSamp=true;
 bool DivGlobFullSamp=true;
@@ -239,7 +237,7 @@ void InitialConditions(){
 	}
 }
 
-void Recovery(){
+void RecoveryBirthFromI(){
 
 	int j=0;
 
@@ -248,32 +246,28 @@ void Recovery(){
 	infectives=model.system_state.at(INF);
 
 	for (unsigned int i=0; i < infectives.size(); i++){
-		if( unif(eng) < rec_rate ){
+		int rand_num = unif(eng);
+		if( rand_num < rec_rate ){
 			inf--; rec++;
 			j++;
 			CNode* p_node=infectives.at(i);
 			model.UpdateSystemState( p_node, INF, REC);
 			p_node->pathogens.clear();
 		}
+		else {
+			if( rand_num < (rec_rate+birth_rate) ){
+				inf--; sus++;
+				CNode* p_node=infectives.at(i);
+				model.UpdateSystemState( p_node, INF, SUS);
+				p_node->pathogens.clear();
+			}
+		}
 	}
 	
 	//cerr << "number of recoveries  " << j << endl;
 }
 
-void BirthDeath(){
-
-	vector<CNode*> infectives;
-
-	infectives=model.system_state.at(INF);
-
-	for (unsigned int i=0; i < infectives.size(); i++){
-		if( unif(eng) < birth_rate ){
-			inf--; sus++;
-			CNode* p_node=infectives.at(i);
-			model.UpdateSystemState( p_node, INF, SUS);
-			p_node->pathogens.clear();
-		}
-	}
+void BirthFromR(){
 
 	vector<CNode*> recovereds;
 
@@ -284,12 +278,10 @@ void BirthDeath(){
 			rec--; sus++;
 			CNode* p_node=recovereds.at(i);
 			model.UpdateSystemState( p_node, REC, SUS);
-
 			assert( p_node->pathogens.size()==0);
-			p_node->pathogens.clear();
+			//p_node->pathogens.clear();
 		}
-	}
-	
+	}	
 }
 
 void BirthDiseaseDeath(){
@@ -309,20 +301,20 @@ void BirthDiseaseDeath(){
 
 }
 
-void ImmunityLoss(){
+void ImmunityLossBirthFromR(){
 
 	vector<CNode*> recovereds;
 
 	recovereds=model.system_state.at(REC);
 
 	for (unsigned int i=0; i < recovereds.size(); i++){
-		if( unif(eng) < wan_rate ){
+
+		if( unif(eng) < (wan_rate+birth_rate) ){
 			rec--; sus++;
 			CNode* p_node=recovereds.at(i);
 			model.UpdateSystemState( p_node, REC, SUS);
-
 			assert( p_node->pathogens.size()==0);
-			p_node->pathogens.clear();
+			//p_node->pathogens.clear();
 		}
 	}
 
@@ -798,23 +790,22 @@ void IntroduceMutant(){
 void UpdateDynamics(){
 
 	if (SIR){ // childhood diseases
-		Recovery();
-		BirthDeath();
-		Migration();
+		RecoveryBirthFromI(); // I->R, I->S
+		BirthFromR(); // R->S
+		Migration(); // S->I
 		Reproduction();
 	}
 	else{
 		if (SIRS){ // influenza
-			Recovery();
-			BirthDeath();
-			ImmunityLoss();
-			Migration();
+			RecoveryBirthFromI(); // I->R, I->S
+			ImmunityLossBirthFromR(); // R->S
+			Migration(); // S->I
 			Reproduction();
 		}
 		else{ // HIV
 			if (SI) {
-				BirthDiseaseDeath();
-				Migration();
+				BirthDiseaseDeath(); // I->S
+				Migration(); // S->I
 				Reproduction();
 			}
 		}
