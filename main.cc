@@ -336,9 +336,10 @@ void UpdateSus(){
 			//cout<< t <<"  "<<p_node->pathogens.size()<<endl;
 
 			for(unsigned int k=0; k < p_node->pathogens.size(); k++){
-				//assert(p_node->pathogens.at(k)!=NULL);
-				if(p_node->laststrain!=NULL && p_node->pathogens.at(k)!=NULL){
-				//cout<< t <<"   "<<distance(p_node->laststrain,p_node->pathogens.at(k))<<endl;	
+				assert(p_node->pathogens.at(k)!=NULL); // this is never NULL
+				//assert(p_node->laststrain!=NULL); // this can be NULL
+				if(p_node->laststrain!=NULL){
+					cout<< t <<"   "<<distance(p_node->laststrain,p_node->pathogens.at(k))<<endl;	
 				}
 			}
 
@@ -889,7 +890,9 @@ void UpdateStrainsNCopies(){
 		CStrain* ss=(*itt)->laststrain;
 		
 		//cerr<<"before"<<endl;
-		//ss->MemoryCopies++;
+		if(ss!=NULL){
+			ss->MemoryCopies++;
+		}
 		//cerr<<"after"<<endl;
 
 	}
