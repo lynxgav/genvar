@@ -335,12 +335,12 @@ void UpdateSus(){
 	
 			//cout<< t <<"  "<<p_node->pathogens.size()<<endl;
 
-			/*for(unsigned int k=0; k < p_node->pathogens.size(); k++){
+			for(unsigned int k=0; k < p_node->pathogens.size(); k++){
 				//assert(p_node->pathogens.at(k)!=NULL);
-				//if(p_node->laststrain!=NULL && p_node->pathogens.at(k)!=NULL){
-				cout<< t <<"   "<<distance(p_node->laststrain,p_node->pathogens.at(k))<<endl;	
-				//}
-			}*/
+				if(p_node->laststrain!=NULL && p_node->pathogens.at(k)!=NULL){
+				//cout<< t <<"   "<<distance(p_node->laststrain,p_node->pathogens.at(k))<<endl;	
+				}
+			}
 
 			sus--; inf++;
 			model.UpdateSystemState( p_node, SUS, INF);
@@ -770,7 +770,7 @@ void Reproduction(){
 		p_node->pathogens=newgeneration;
 
 		//assert(p_node->pathogens.at(0)!=NULL);
-		assert(p_node->pathogens.size()>=1);
+		assert(p_node->pathogens.size()==1); // works only for Nd=1
 		p_node->laststrain=p_node->pathogens.at(0); // the first one is copied
 
 		assert(p_node->pathogens.size()==(unsigned int)Nd);
@@ -872,6 +872,7 @@ void UpdateStrainsNCopies(){
 	vector<CStrain *>::iterator it=allstrains.begin();
 	for (; it != allstrains.end(); it++){
 		(*it)->NCopies=0;
+		(*it)->MemoryCopies=0;
 	}
 
 	for (unsigned int i=0; i < model.system_state.at(INF).size(); i++){
@@ -882,6 +883,16 @@ void UpdateStrainsNCopies(){
 	}
 
 	//PrintMutant();
+	
+	vector<CNode *>::iterator itt; //going through nodes of the network
+	for (itt=model.network->nodes.begin(); itt!=model.network->nodes.end(); itt++) {
+		CStrain* ss=(*itt)->laststrain;
+		
+		//cerr<<"before"<<endl;
+		//ss->MemoryCopies++;
+		//cerr<<"after"<<endl;
+
+	}
 }
 
 void RemoveDeadStrains(){
@@ -893,7 +904,6 @@ void RemoveDeadStrains(){
 		if( (*it)->NCopies>0 ) {
 			newlive.push_back(*it);
 		}
-
 		if(!(*it)->dead){
 			newall.push_back(*it);
 			}

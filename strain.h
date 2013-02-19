@@ -264,7 +264,7 @@ bool CStrain::delete_dead_branches(){
 		(*it).head->dead=(*it).head->delete_dead_branches();
 	}
 	remove_dead_children();
-	if(neighbours.size()==1 and NCopies==0){
+	if(neighbours.size()==1 and NCopies==0 and MemoryCopies==0){
 		return true;
 		}
 	return false;
