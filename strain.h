@@ -52,6 +52,7 @@ class CStrain{
 	int ID;
 	unsigned int visited;
 	int NCopies;
+	int MemoryCopies;
 	double max_f;
 	float x,y;
 	float color;
@@ -77,6 +78,7 @@ unsigned int CStrain::NNeigh(){
 //father node
 CStrain::CStrain(int i, CStrain *f, double im_d){
 	NCopies=0;
+	MemoryCopies=0;
 	max_f=0.;
 	t_origination=-1;
 	t_fixation=-1;

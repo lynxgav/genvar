@@ -332,6 +332,16 @@ void UpdateSus(){
 	for (unsigned int i=0; i < susceptibles.size(); i++){
 		CNode* p_node=susceptibles.at(i);
 		if( p_node->pathogens.size()>0 ){
+	
+			//cout<< t <<"  "<<p_node->pathogens.size()<<endl;
+
+			/*for(unsigned int k=0; k < p_node->pathogens.size(); k++){
+				//assert(p_node->pathogens.at(k)!=NULL);
+				//if(p_node->laststrain!=NULL && p_node->pathogens.at(k)!=NULL){
+				cout<< t <<"   "<<distance(p_node->laststrain,p_node->pathogens.at(k))<<endl;	
+				//}
+			}*/
+
 			sus--; inf++;
 			model.UpdateSystemState( p_node, SUS, INF);
 			j++;
@@ -758,6 +768,10 @@ void Reproduction(){
 		}
 		p_node->pathogens.clear();
 		p_node->pathogens=newgeneration;
+
+		//assert(p_node->pathogens.at(0)!=NULL);
+		assert(p_node->pathogens.size()>=1);
+		p_node->laststrain=p_node->pathogens.at(0); // the first one is copied
 
 		assert(p_node->pathogens.size()==(unsigned int)Nd);
 	}

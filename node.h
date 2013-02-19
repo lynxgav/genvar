@@ -11,9 +11,10 @@ class CStrain;
 class CNode
 	{
 	public:
-	CNode(int id=-1){ID=id; degree=0; prob=0;}
+	CNode(int id=-1){ID=id; degree=0; prob=0; laststrain=NULL;}
 	~CNode();
 	list<CNode*> neighbours;
+	CStrain* laststrain;
 	vector<CStrain*> pathogens;
 	vector<CStrain*> migrantsV;
 	map<int,CStrain*> migrants;

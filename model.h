@@ -105,6 +105,9 @@ void CModel::Initial_Conditions(){
 	vector<CNode *>::iterator it;
 	//Distribute the state randomly
 	for (it=network->nodes.begin(); it!=network->nodes.end(); it++) {
+
+		(*it)->laststrain=NULL;
+
 		s=(double)sus/(double)j; i=(double)inf/(double)j;
 		rand=unif(eng);
 		if (rand < s ) {(*it)->state=SUS; sus--;}
